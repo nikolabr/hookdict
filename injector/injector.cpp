@@ -3,14 +3,15 @@
 #include <string>
 #include <filesystem>
 #include <array>
+#include <exception>
+#include <source_location>
 
 using namespace std;
 
 constexpr auto nPipeBufferSize = 4096;
 
-void print_system_error() {
-	DWORD dwErrCode = GetLastError();
-	cerr << system_category().message(dwErrCode) << endl;
+[[noreturn]] void throw_system_error(const std::string& msg, DWORD dwErrCode = GetLastError()) {
+	throw std::system_error(dwErrCode, std::system_category(), msg);
 }
 
 void hookToProcess(DWORD dwPID, wstring const& dllName) {
@@ -19,7 +20,15 @@ void hookToProcess(DWORD dwPID, wstring const& dllName) {
 	bool bRes = true;
 
 	if (hProcess == NULL) {
-		print_system_error();
+		DWORD dwErrCode = GetLastError();
+		if (dwErrCode == ERROR_ACCESS_DENIED)
+		{
+			// TODO : Elevate injector if target is elevated
+		}
+		else {
+			throw_system_error("Failed to open process handle");
+		}
+		
 		return;
 	}
 
@@ -27,26 +36,25 @@ void hookToProcess(DWORD dwPID, wstring const& dllName) {
 	HINSTANCE hKernel32 = GetModuleHandleW(L"KERNEL32.DLL");
 
 	if (hKernel32 == NULL) {
-		print_system_error();
+		throw_system_error("Failed to get KERNEL32.DLL handle");
 		return;
 	}
 
 	void* lpLoadLibraryW = GetProcAddress(hKernel32, "LoadLibraryW");
 	if (!lpLoadLibraryW) {
-		print_system_error();
+		throw_system_error("Failed to get LoadLibraryW address");
 		return;
 	}
 
 	void* lpRemoteString = VirtualAllocEx(hProcess, nullptr, nLen + 1, MEM_COMMIT, PAGE_READWRITE);
 	if (lpRemoteString == NULL) {
-		print_system_error();
+		throw_system_error("Failed to allocate in target");
 		return;
 	}
 
 	bRes = WriteProcessMemory(hProcess, lpRemoteString, dllName.c_str(), nLen, nullptr);
 	if (!bRes) {
-		cerr << "Could not write to process memory" << endl;
-		print_system_error();
+		throw_system_error("Could not write to process memory");
 		return;
 	}
 
@@ -88,16 +96,21 @@ int main(int argc, char* argv[])
 	cout << "Created pipe" << endl;
 
 	try {
+		cout << "Process ID: ";
 		cin >> pid_str;
 		long pid = stol(pid_str);
 		hookToProcess(pid, L"hookdict_target.dll");
 	}
-	catch (std::invalid_argument const& ex) {
+	catch (std::system_error const& ex) {
+		cerr << "System error: " << ex.what();
+		return 1;
+	}
+	catch ([[maybe_unused]] std::invalid_argument const& ex) {
 		return 1;
 	}
 
 	if (hPipe == NULL || hPipe == INVALID_HANDLE_VALUE) {
-		print_system_error();
+		throw_system_error("Failed to open pipe to target");
 		return 1;
 	}
 
@@ -124,7 +137,7 @@ int main(int argc, char* argv[])
 			nullptr);
 
 		if (!bRes) {
-			print_system_error();
+			throw_system_error("Failed to read from pipe");
 			CloseHandle(hPipe);
 			return 1;
 		}

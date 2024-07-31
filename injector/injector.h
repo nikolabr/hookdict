@@ -10,4 +10,6 @@
 #include <wil/resource.h>
 #include <wil/result_macros.h>
 
+#include "common.h"
+
 // TODO: プログラムに必要な追加ヘッダーをここで参照します。

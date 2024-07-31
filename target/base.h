@@ -2,6 +2,7 @@
 
 #include "fastcorr.h"
 #include "hook_manager.h"
+#include "common.h"
 
 #include <Windows.h>
 
@@ -9,6 +10,8 @@
 #include <vector>
 #include <list>
 #include <format>
+
+#include <wil/result_macros.h>
 #include <wil/resource.h>
 
 struct glyph_info {
@@ -24,6 +27,13 @@ struct glyph_info {
 struct glyph_cache {
 	std::list<glyph_info> m_glyphs;
 };
+
+void write_to_pipe(wil::shared_hfile pipe_handle, auto&& msg)
+{
+	std::wstring pipemsg(msg);
+	BOOL res = ::WriteFile(pipe_handle.get(), pipemsg.c_str(), pipemsg.size(), nullptr, nullptr);
+	THROW_IF_WIN32_BOOL_FALSE(res);
+}
 
 namespace targets {
 	template <typename T>

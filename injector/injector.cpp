@@ -3,10 +3,8 @@
 #include <string>
 #include <filesystem>
 #include <array>
-#include <exception>
-#include <source_location>
 
-using namespace std;
+#include "process_info.h"
 
 constexpr auto nPipeBufferSize = 4096;
 
@@ -19,7 +17,7 @@ wil::unique_process_handle open_process_by_pid(uint32_t pid)
 	return process_handle;
 }
 
-void hook_to_process(DWORD dwPID, wstring const& dllName) {
+void hook_to_process(DWORD dwPID, std::wstring const& dllName) {
 	auto process_handle = open_process_by_pid(dwPID);
 	THROW_LAST_ERROR_IF_NULL(process_handle);
 
@@ -62,17 +60,16 @@ void hook_to_process(DWORD dwPID, wstring const& dllName) {
 
 int main(int argc, char* argv[])
 {
-	string pid_str;
-	filesystem::path dllPath = filesystem::current_path() / "../target/hookdict_target.dll";
-	dllPath = filesystem::absolute(dllPath);
+	std::filesystem::path dllPath = std::filesystem::current_path() / "../target/hookdict_target.dll";
+	dllPath = std::filesystem::absolute(dllPath);
 	
-	if (!filesystem::exists(dllPath)) {
-		cerr << "Target DLL not found" << endl;
+	if (!std::filesystem::exists(dllPath)) {
+		std::wcerr << "Target DLL not found" << std::endl;
 		return 1;
 	}
 
 	HANDLE hPipe = CreateNamedPipeW(
-		L"\\\\.\\pipe\\hookdict_pipe",
+		common::hookdict_pipe_name,
 		PIPE_ACCESS_INBOUND,
 		PIPE_TYPE_MESSAGE | PIPE_REJECT_REMOTE_CLIENTS,
 		1,
@@ -82,19 +79,39 @@ int main(int argc, char* argv[])
 		nullptr
 	);
 
-	cout << "Created pipe" << endl;
+	LOG_LAST_ERROR_IF(hPipe == 0);
+
+	std::wcout << "Created pipe" << std::endl;
 
 	try {
-		cout << "Process ID: ";
-		cin >> pid_str;
-		long pid = stol(pid_str);
-		hook_to_process(pid, dllPath);
+		std::wstring proc_name;
+		std::wcout << "Process name: ";
+		std::wcin >> proc_name;
+
+		std::transform(proc_name.begin(), proc_name.end(), proc_name.begin(), towupper);
+
+		std::vector procs = process_info::enum_processes();
+
+		auto it = std::find_if(procs.begin(), procs.end(),
+			[&](const process_info& proc_info) {
+				auto filename = proc_info.m_module_name.filename().wstring();
+				std::transform(filename.begin(), filename.end(), filename.begin(), towupper);
+
+				return filename == proc_name;
+			});
+
+		if (it != procs.end())
+		{
+			hook_to_process(it->m_pid, dllPath);
+		}
+		else {
+			std::wcerr << "Failed to find process with name: " << proc_name;
+			return 1;
+		}
+		
 	}
-	catch (std::system_error const& ex) {
-		cerr << "System error: " << ex.what();
-		return 1;
-	}
-	catch ([[maybe_unused]] std::invalid_argument const& ex) {
+	catch (std::exception const& ex) {
+		std::wcerr << ex.what();
 		return 1;
 	}
 
@@ -114,7 +131,7 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		array<wchar_t, nPipeBufferSize> buf{};
+		std::array<wchar_t, nPipeBufferSize> buf{};
 		using buf_element = decltype(buf)::value_type;
 		buf.fill('\0');
 
@@ -126,13 +143,12 @@ int main(int argc, char* argv[])
 			nullptr);
 
 		if (!bRes) {
-			// throw_system_error("Failed to read from pipe");
 			CloseHandle(hPipe);
 			return 1;
 		}
 
 		buf[nBytesRead / sizeof(buf_element)] = '\0';
-		std::wcout << buf.data() << endl;
+		std::wcout << buf.data() << std::endl;
 	}
 
 	return 0;

@@ -1,29 +1,10 @@
 #include "base.h"
 
-#include <iterator>
-#include <format>
-
-bool pipe_write_string(HANDLE hPipe, std::string const& str) {
-    DWORD nBytesWritten = 0;
-    return WriteFile(
-        hPipe,
-        str.c_str(),
-        str.size() * sizeof(std::string::value_type),
-        &nBytesWritten,
-        nullptr
-    );
-}
-
-bool pipe_write_string(HANDLE hPipe, std::wstring const& str) {
-    DWORD nBytesWritten = 0;
-    return WriteFile(
-        hPipe,
-        str.c_str(),
-        str.size() * sizeof(std::wstring::value_type),
-        &nBytesWritten,
-        nullptr
-    );
-}
+#include <array>
+#include <minwindef.h>
+#include <libloaderapi.h>
+#include <filesystem>
+#include <vector>
 
 glyph_info::glyph_info(unsigned int char_val, unsigned char* ptr, std::size_t n, unsigned int x, unsigned int y)
 {

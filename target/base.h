@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fastcorr.h"
+#include "hook_manager.h"
 
 #include <Windows.h>
 
@@ -8,9 +9,7 @@
 #include <vector>
 #include <list>
 #include <format>
-
-bool pipe_write_string(HANDLE hPipe, std::string const& str);
-bool pipe_write_string(HANDLE hPipe, std::wstring const& str);
+#include <wil/resource.h>
 
 struct glyph_info {
 	unsigned int m_val = 0;
@@ -32,10 +31,4 @@ namespace targets {
 		std::wstring msg = std::format(L"target {}: {}", target.s_target_name, wstr);
 		pipe_write_string(target.m_hPipe, msg);
 	}
-
-	template <typename H>
-	class target_interface {
-	public:
-		virtual void close(H& hm) = 0;
-	};
 }

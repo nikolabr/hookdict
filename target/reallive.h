@@ -1,14 +1,12 @@
 #pragma once
 
-#include "hook_manager.h"
 #include "base.h"
 
 #include <memory>
 #include <string>
-#include <functional>
 
 namespace targets {
-	class reallive : public target_interface<hook_manager>
+	class reallive
 	{
 		static constexpr std::wstring_view s_target_name = L"reallive";
 
@@ -28,7 +26,7 @@ namespace targets {
 		HANDLE m_hPipe = NULL;
 
 		static std::unique_ptr<reallive> create(hook_manager& hm, HANDLE hPipe);
-		virtual void close(hook_manager& hm) override;
+		void close(hook_manager& hm);
 	};
 }
 

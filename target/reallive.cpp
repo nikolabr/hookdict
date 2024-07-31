@@ -9,6 +9,7 @@
 constinit targets::reallive* g_reallive_ptr = nullptr;
 
 namespace targets {
+    /*
     DWORD WINAPI reallive::fakeGetGlyphOutlineA(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, const MAT2* lpmat2) {
         DWORD dwRet = g_reallive_ptr->m_pfGlyphOutlineAOriginal(hdc, uChar, fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
 
@@ -47,7 +48,6 @@ namespace targets {
             return nullptr;
         }
 
-        /*
         HINSTANCE hD3DModule = GetModuleHandleW(L"RL_D3D.DLL");
         if (hD3DModule == NULL) {
             pipe_write_string(hPipe, L"Could not load RL_D3D.DLL");
@@ -65,7 +65,6 @@ namespace targets {
             pipe_write_string(hPipe, L"Failed to set d3d_dll_draw hook");
             return nullptr;
         }
-        */
 
         g_reallive_ptr = reallive_ptr.get();
         pipe_write_string(hPipe, L"Successfully created target reallive");
@@ -78,4 +77,5 @@ namespace targets {
         hm.disable_hook(GetGlyphOutlineA);
         g_reallive_ptr = nullptr;
     }
+    */
 }

@@ -10,14 +10,17 @@ if (POLICY CMP0141)
 endif()
 
 project ("hookdict")
+
 find_package(minhook CONFIG REQUIRED)
 find_package(FFTW3 CONFIG REQUIRED)
+find_package(wil CONFIG REQUIRED)
 
 # windows.h max collides with std::max in fftwpp
-add_definitions(/DNOMINMAX /D_WINSOCKAPI_)
+# add_definitions(/DNOMINMAX /D_WINSOCKAPI_)
+add_definitions(/DNOMINMAX)
 
 # サブプロジェクトを含めます。
+add_subdirectory("common")
 add_subdirectory("fastcorr")
 add_subdirectory ("injector")
 add_subdirectory("target")
-

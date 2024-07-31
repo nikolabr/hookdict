@@ -10,63 +10,52 @@ using namespace std;
 
 constexpr auto nPipeBufferSize = 4096;
 
-[[noreturn]] void throw_system_error(const std::string& msg, DWORD dwErrCode = GetLastError()) {
-	throw std::system_error(dwErrCode, std::system_category(), msg);
+wil::unique_process_handle open_process_by_pid(uint32_t pid)
+{
+	auto hr = OpenProcess(PROCESS_ALL_ACCESS, false, pid);
+	LOG_LAST_ERROR_IF_NULL(hr);
+
+	wil::unique_process_handle process_handle(hr);
+	return process_handle;
 }
 
-void hookToProcess(DWORD dwPID, wstring const& dllName) {
-	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, false, dwPID);
+void hook_to_process(DWORD dwPID, wstring const& dllName) {
+	auto process_handle = open_process_by_pid(dwPID);
+	THROW_LAST_ERROR_IF_NULL(process_handle);
 
-	bool bRes = true;
+	wil::unique_hmodule kernel32(::GetModuleHandleW(L"KERNEL32.DLL"));
+	THROW_LAST_ERROR_IF_NULL(kernel32);
 
-	if (hProcess == NULL) {
-		DWORD dwErrCode = GetLastError();
-		if (dwErrCode == ERROR_ACCESS_DENIED)
-		{
-			// TODO : Elevate injector if target is elevated
-		}
-		else {
-			throw_system_error("Failed to open process handle");
-		}
-		
-		return;
+	FARPROC load_library_w = GetProcAddress(kernel32.get(), "LoadLibraryW");
+	THROW_LAST_ERROR_IF_NULL(load_library_w);
+
+	size_t string_len = wcslen(dllName.c_str()) * sizeof(wchar_t);
+	wil::unique_virtualalloc_ptr<void> remote_string(
+		::VirtualAllocEx(
+			process_handle.get(),
+			nullptr,
+			string_len + 1,
+			MEM_COMMIT,
+			PAGE_READWRITE
+		)
+	);
+	THROW_LAST_ERROR_IF_NULL(remote_string);
+
+	THROW_IF_WIN32_BOOL_FALSE(
+		::WriteProcessMemory(process_handle.get(), remote_string.get(), 
+			reinterpret_cast<void const*>(dllName.c_str()), string_len, nullptr)
+	);
+
+	wil::unique_handle thread_handle(::CreateRemoteThread(
+		process_handle.get(), nullptr, 0, (LPTHREAD_START_ROUTINE)load_library_w, 
+		remote_string.get(), 0, nullptr));
+
+	if (thread_handle)
+	{
+		wil::handle_wait(thread_handle.get(), 500);
 	}
 
-	size_t nLen = wcslen(dllName.c_str()) * sizeof(WCHAR);
-	HINSTANCE hKernel32 = GetModuleHandleW(L"KERNEL32.DLL");
-
-	if (hKernel32 == NULL) {
-		throw_system_error("Failed to get KERNEL32.DLL handle");
-		return;
-	}
-
-	void* lpLoadLibraryW = GetProcAddress(hKernel32, "LoadLibraryW");
-	if (!lpLoadLibraryW) {
-		throw_system_error("Failed to get LoadLibraryW address");
-		return;
-	}
-
-	void* lpRemoteString = VirtualAllocEx(hProcess, nullptr, nLen + 1, MEM_COMMIT, PAGE_READWRITE);
-	if (lpRemoteString == NULL) {
-		throw_system_error("Failed to allocate in target");
-		return;
-	}
-
-	bRes = WriteProcessMemory(hProcess, lpRemoteString, dllName.c_str(), nLen, nullptr);
-	if (!bRes) {
-		throw_system_error("Could not write to process memory");
-		return;
-	}
-
-	HANDLE hThread = CreateRemoteThread(hProcess, nullptr, 0, (LPTHREAD_START_ROUTINE)lpLoadLibraryW, lpRemoteString, 0, nullptr);
-
-	if (hThread) {
-		WaitForSingleObject(hThread, 500);
-	}
-
-	VirtualFreeEx(hProcess, lpRemoteString, 0, MEM_RELEASE);
-
-	CloseHandle(hProcess);
+	VirtualFreeEx(process_handle.get(), remote_string.release(), 0, MEM_RELEASE);
 
 	return;
 }
@@ -99,7 +88,7 @@ int main(int argc, char* argv[])
 		cout << "Process ID: ";
 		cin >> pid_str;
 		long pid = stol(pid_str);
-		hookToProcess(pid, L"hookdict_target.dll");
+		hook_to_process(pid, dllPath);
 	}
 	catch (std::system_error const& ex) {
 		cerr << "System error: " << ex.what();
@@ -110,7 +99,7 @@ int main(int argc, char* argv[])
 	}
 
 	if (hPipe == NULL || hPipe == INVALID_HANDLE_VALUE) {
-		throw_system_error("Failed to open pipe to target");
+		// throw_system_error("Failed to open pipe to target");
 		return 1;
 	}
 
@@ -125,7 +114,7 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		array<wchar_t, nPipeBufferSize> buf;
+		array<wchar_t, nPipeBufferSize> buf{};
 		using buf_element = decltype(buf)::value_type;
 		buf.fill('\0');
 
@@ -137,7 +126,7 @@ int main(int argc, char* argv[])
 			nullptr);
 
 		if (!bRes) {
-			throw_system_error("Failed to read from pipe");
+			// throw_system_error("Failed to read from pipe");
 			CloseHandle(hPipe);
 			return 1;
 		}

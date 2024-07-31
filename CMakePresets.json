@@ -10,7 +10,7 @@
           "cacheVariables": {
             "CMAKE_C_COMPILER": "cl.exe",
             "CMAKE_CXX_COMPILER": "cl.exe",
-            "CMAKE_TOOLCHAIN_FILE": "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake"
+            "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
           },
             "condition": {
                 "type": "equals",
@@ -47,7 +47,8 @@
                 "strategy": "external"
             },
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
+              "CMAKE_BUILD_TYPE": "Debug",
+              "VCPKG_TARGET_TRIPLET":  "x86-windows-static"
             }
         },
         {

@@ -1,9 +1,12 @@
 ﻿#include "injector.h"
 
 #include <array>
+#include <exception>
 #include <filesystem>
+#include <stdexcept>
 #include <string>
 
+#include "common.h"
 #include "process_info.h"
 
 #include <wil/resource.h>
@@ -62,11 +65,11 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  HANDLE hPipe = CreateNamedPipeW(
+  wil::unique_hfile pipe_handle(CreateNamedPipeW(
       common::hookdict_pipe_name, PIPE_ACCESS_INBOUND,
-      PIPE_TYPE_MESSAGE | PIPE_REJECT_REMOTE_CLIENTS, 1, 0, 0, 0, nullptr);
+      PIPE_TYPE_MESSAGE | PIPE_REJECT_REMOTE_CLIENTS, 1, 0, 0, 0, nullptr));
 
-  LOG_LAST_ERROR_IF(hPipe == 0);
+  THROW_LAST_ERROR_IF_MSG(!pipe_handle, "Failed to open pipe!");
 
   std::wcout << "Created pipe" << std::endl;
 
@@ -86,13 +89,13 @@ int main(int argc, char *argv[]) {
           std::transform(filename.begin(), filename.end(), filename.begin(),
                          towupper);
 
-          return filename == proc_name;
+          return !filename.empty() && filename == proc_name;
         });
 
     if (it != procs.end()) {
       hook_to_process(it->m_pid, dllPath);
     } else {
-      std::wcerr << "Failed to find process with name: " << proc_name;
+      std::wcerr << "Failed to find process with name: " << proc_name << std::endl;
       return 1;
     }
 
@@ -101,18 +104,13 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (hPipe == NULL || hPipe == INVALID_HANDLE_VALUE) {
-    // throw_system_error("Failed to open pipe to target");
-    return 1;
-  }
-
   while (true) {
-    bool bRes = ConnectNamedPipe(hPipe, nullptr);
+    bool bRes = ConnectNamedPipe(pipe_handle.get(), nullptr);
 
     if (!bRes) {
       DWORD dwErrCode = GetLastError();
       if (dwErrCode != ERROR_PIPE_CONNECTED) {
-        CloseHandle(hPipe);
+        CloseHandle(pipe_handle.get());
         return 1;
       }
     }
@@ -122,11 +120,11 @@ int main(int argc, char *argv[]) {
     buf.fill('\0');
 
     DWORD nBytesRead = 0;
-    bRes = ReadFile(hPipe, buf.data(), (buf.size() - 1) * sizeof(buf_element),
+    bRes = ReadFile(pipe_handle.get(), buf.data(), (buf.size() - 1) * sizeof(buf_element),
                     &nBytesRead, nullptr);
 
     if (!bRes) {
-      CloseHandle(hPipe);
+      CloseHandle(pipe_handle.get());
       return 1;
     }
 

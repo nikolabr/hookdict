@@ -1,46 +1,43 @@
 #include "process_info.h"
 
-#include <iterator>
-#include <array>
 #include <algorithm>
+#include <array>
+#include <iterator>
 
-#include <windows.h>
 #include <psapi.h>
+#include <windows.h>
 
 constexpr std::size_t max_process_to_enumerate = 1024;
 
-std::wstring process_info::get_process_name(uint32_t pid)
-{
-	std::array<wchar_t, MAX_PATH> buf;
+std::wstring process_info::get_process_name(uint32_t pid) {
+  std::array<wchar_t, MAX_PATH> buf;
 
-	wil::unique_process_handle proc_handle(
-		OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid)
-	);
-	if (proc_handle == NULL)
-	{
-		return L"";
-	}
+  wil::unique_process_handle proc_handle(
+      OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid));
+  if (proc_handle == NULL) {
+    return L"";
+  }
 
-	DWORD res = GetModuleFileNameExW(proc_handle.get(), nullptr, buf.data(), buf.size());
-	THROW_LAST_ERROR_IF(res == 0);
+  DWORD res =
+      GetModuleFileNameExW(proc_handle.get(), nullptr, buf.data(), buf.size());
+  THROW_LAST_ERROR_IF(res == 0);
 
-	return std::wstring(buf.data(), res);
+  return std::wstring(buf.data(), res);
 }
 
-std::vector<process_info> process_info::enum_processes()
-{
-	std::array<DWORD, 1024> processes_arr;
+std::vector<process_info> process_info::enum_processes() {
+  std::array<DWORD, 1024> processes_arr;
 
-	DWORD returned = 0;
-	DWORD dwRes = EnumProcesses(processes_arr.data(), processes_arr.size(), &returned);
-	THROW_LAST_ERROR_IF(dwRes == 0);
+  DWORD returned = 0;
+  DWORD dwRes =
+      EnumProcesses(processes_arr.data(), processes_arr.size(), &returned);
+  THROW_LAST_ERROR_IF(dwRes == 0);
 
-	std::vector<process_info> res;
+  std::vector<process_info> res;
 
-	std::transform(processes_arr.begin(), processes_arr.begin() + returned, std::back_inserter(res),
-		[](auto&&... args) {
-			return process_info(args...);
-		});
-	
-	return res;
+  std::transform(processes_arr.begin(), processes_arr.begin() + returned,
+                 std::back_inserter(res),
+                 [](auto &&...args) { return process_info(args...); });
+
+  return res;
 }

@@ -10,9 +10,9 @@
 	    "environment": {
 		"VCPKG_ROOT": "/opt/vcpkg",
 		"CC": "/opt/llvm-mingw-20240619-msvcrt-ubuntu-20.04-x86_64/bin/i686-w64-mingw32-clang",
-		"CFLAGS": "-fms-extensions",
+		"CFLAGS": "-fms-extensions -static -static-libgcc",
 		"CXX": "/opt/llvm-mingw-20240619-msvcrt-ubuntu-20.04-x86_64/bin/i686-w64-mingw32-clang++",
-		"CXXFLAGS": "-fms-extensions"
+		"CXXFLAGS": "-fms-extensions -stdlib=libc++ -static -static-libgcc -static-libstdc++"
 	    },
 	    "cacheVariables": {
 		"CMAKE_C_FLAGS": "$env{CFLAGS}",
@@ -27,6 +27,9 @@
 		"CMAKE_FIND_ROOT_PATH_MODE_PROGRAM": "NEVER",
 		"CMAKE_FIND_ROOT_PATH_MODE_LIBRARY": "ONLY",
 		"CMAKE_FIND_ROOT_PATH_MODE_INCLUDE": "ONLY",
+
+		"CMAKE_SHARED_LIBRARY_PREFIX_C": "",
+		"CMAKE_SHARED_LIBRARY_PREFIX_CXX": "",
 		
 		"CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
 		"CMAKE_EXPORT_COMPILE_COMMANDS": "ON"

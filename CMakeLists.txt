@@ -11,9 +11,20 @@ endif()
 
 project ("hookdict")
 
+include(FetchContent)
+set(WIL_BUILD_TESTS OFF)
+set(VCPKG_APPLOCAL_DEPS OFF)
+
+FetchContent_Declare(
+	wil
+	GIT_REPOSITORY https://github.com/microsoft/wil
+	GIT_TAG 80ea92c7ab42bf50118c557065bd2db6d8b48f50
+)
+
+FetchContent_MakeAvailable(wil)
+
 find_package(minhook CONFIG REQUIRED)
-find_package(FFTW3 CONFIG REQUIRED)
-find_package(wil CONFIG REQUIRED)
+# find_package(FFTW3 CONFIG REQUIRED)
 
 # windows.h max collides with std::max in fftwpp
 # add_definitions(/DNOMINMAX /D_WINSOCKAPI_)

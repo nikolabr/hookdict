@@ -1,8 +1,5 @@
 #include "ever17.h"
 
-#include <wil/resource.h>
-#include <wil/result_macros.h>
-
 using namespace targets::kid;
 
 std::shared_ptr<ever17> targets::kid::ever17::try_create(hook_manager& hm, wil::shared_hfile pipe)

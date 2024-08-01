@@ -1,7 +1,6 @@
 {
-  "dependencies": [
-    "minhook",
-    "fftwpp",
-    "wil"
-  ]
+    "dependencies": [
+	"minhook",
+	"fftwpp"
+    ]
 }

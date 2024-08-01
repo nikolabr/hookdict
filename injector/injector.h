@@ -4,12 +4,11 @@
 #pragma once
 
 #include <iostream>
-#include <WinSock2.h>
-#include <Windows.h>
-
-#include <wil/resource.h>
-#include <wil/result_macros.h>
+#include <algorithm>
 
 #include "common.h"
+
+#include <winsock2.h>
+#include <windows.h>
 
 // TODO: プログラムに必要な追加ヘッダーをここで参照します。

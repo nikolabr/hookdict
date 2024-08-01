@@ -4,11 +4,8 @@
 #include <array>
 #include <algorithm>
 
-#include <Windows.h>
-#include <Psapi.h>
-
-#include <wil/result_macros.h>
-#include <wil/resource.h>
+#include <windows.h>
+#include <psapi.h>
 
 constexpr std::size_t max_process_to_enumerate = 1024;
 

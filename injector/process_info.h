@@ -6,6 +6,8 @@
 
 #include <windows.h>
 
+#include "common.h"
+
 struct process_info
 {
 	uint32_t m_pid;

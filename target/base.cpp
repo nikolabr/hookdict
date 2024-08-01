@@ -1,10 +1,8 @@
 #include "base.h"
 
-#include <array>
 #include <minwindef.h>
 #include <libloaderapi.h>
-#include <filesystem>
-#include <vector>
+
 
 glyph_info::glyph_info(unsigned int char_val, unsigned char* ptr, std::size_t n, unsigned int x, unsigned int y)
 {

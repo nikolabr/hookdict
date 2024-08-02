@@ -12,6 +12,8 @@ endif()
 project ("hookdict")
 
 include(FetchContent)
+include(FindPkgConfig)
+
 set(WIL_BUILD_TESTS OFF)
 set(VCPKG_APPLOCAL_DEPS OFF)
 
@@ -23,8 +25,9 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(wil)
 
+find_package(PkgConfig REQUIRED)
 find_package(minhook CONFIG REQUIRED)
-find_package(icu-i18n CONFIG REQUIRED)
+pkg_check_modules(ICU REQUIRED icu-i18n)
 # find_package(FFTW3 CONFIG REQUIRED)
 
 # windows.h max collides with std::max in fftwpp

@@ -5,7 +5,7 @@ set(VCPKG_TARGET_TRIPLET "x86-mingw-static")
 set(VCPKG_CMAKE_SYSTEM_NAME "")
 
 set(CMAKE_C_COMPILER "/opt/llvm-mingw-20240619-msvcrt-ubuntu-20.04-x86_64/bin/i686-w64-mingw32-clang")
-set(CMAKE_CXX_COMPILER "/opt/llvm-mingw-20240619-msvcrt-ubuntu-20.04-x86_64/bin/i686-w64-mingw32-clang")
+set(CMAKE_CXX_COMPILER "/opt/llvm-mingw-20240619-msvcrt-ubuntu-20.04-x86_64/bin/i686-w64-mingw32-clang++")
 
 set(CMAKE_C_FLAGS "-fms-extensions -static -static-libgcc")
 set(CMAKE_CXX_FLAGS "-fms-extensions -stdlib=libc++ -static -static-libgcc -static-libstdc++")

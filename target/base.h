@@ -3,40 +3,55 @@
 #include "common.h"
 
 #include "fastcorr.h"
-#include "hook_manager.h"
 
 #include <windows.h>
 
+#include <format>
+#include <list>
 #include <string>
 #include <vector>
-#include <list>
-#include <format>
 
 struct glyph_info {
-	unsigned int m_val = 0;
-	std::vector<unsigned char> m_buffer;
+  unsigned int m_val = 0;
+  std::vector<unsigned char> m_buffer;
 
-	unsigned int m_x = 0;
-	unsigned int m_y = 0;
+  unsigned int m_x = 0;
+  unsigned int m_y = 0;
 
-	glyph_info(unsigned int char_val, unsigned char* ptr, std::size_t n, unsigned int x, unsigned int y);
+  glyph_info(unsigned int char_val, unsigned char *ptr, std::size_t n,
+             unsigned int x, unsigned int y);
 };
+
+static void write_msg(wchar_t const *msg) {
+  ::MessageBoxW(nullptr, msg, L"Target message", MB_OK);
+}
 
 struct glyph_cache {
-	std::list<glyph_info> m_glyphs;
+  std::list<glyph_info> m_glyphs;
 };
 
-static void write_to_pipe(wil::shared_hfile pipe_handle, auto&& msg)
-{
-	std::wstring pipemsg(msg);
-	BOOL res = ::WriteFile(pipe_handle.get(), pipemsg.c_str(), pipemsg.size(), nullptr, nullptr);
-	THROW_IF_WIN32_BOOL_FALSE(res);
+extern wil::shared_hfile g_pipe;
+
+static void create_pipe() {
+  g_pipe = wil::shared_hfile(
+      CreateFileW(common::hookdict_pipe_name, GENERIC_WRITE, FILE_SHARE_WRITE,
+                  nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+}
+
+static void write_to_pipe(wil::shared_hfile pipe_handle, auto &&msg) {
+  const std::string pipemsg(msg);
+  BOOL res = ::WriteFile(pipe_handle.get(), pipemsg.c_str(),
+                         pipemsg.size() * sizeof(wchar_t), nullptr, nullptr);
+  if (!res) {
+    write_msg(L"Could not write to pipe");
+  }
+  LOG_IF_WIN32_BOOL_FALSE(res);
 }
 
 namespace targets {
-	template <typename T>
-	void target_log(const T& target, std::wstring const& wstr) {
-		std::wstring msg = std::format(L"target {}: {}", target.s_target_name, wstr);
-		pipe_write_string(target.m_hPipe, msg);
-	}
+template <typename T>
+void target_log(const T &target, std::wstring const &wstr) {
+  std::wstring msg = std::format(L"target {}: {}", target.s_target_name, wstr);
+  pipe_write_string(target.m_hPipe, msg);
 }
+} // namespace targets

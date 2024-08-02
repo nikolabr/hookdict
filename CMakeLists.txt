@@ -24,6 +24,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(wil)
 
 find_package(minhook CONFIG REQUIRED)
+find_package(icu-i18n CONFIG REQUIRED)
 # find_package(FFTW3 CONFIG REQUIRED)
 
 # windows.h max collides with std::max in fftwpp

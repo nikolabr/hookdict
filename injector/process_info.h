@@ -18,6 +18,9 @@ struct process_info {
   process_info(uint32_t pid)
       : m_pid(pid), m_module_name(get_process_name(pid)) {}
 
+  /*
+    Returns empty string if unable to open process
+   */
   static std::wstring get_process_name(uint32_t pid);
   static std::vector<process_info> enum_processes();
 

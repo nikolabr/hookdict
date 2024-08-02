@@ -21,11 +21,11 @@
 #define InterlockedIncrementNoFence InterlockedIncrement
 #define WIL_NO_SLIM_EVENT
 
-#include <winsock2.h>
 #include <windows.h>
+#include <winsock2.h>
 
-#include <filesystem>
 #include <array>
+#include <filesystem>
 #include <memory>
 
 #include <wil/stl.h>
@@ -36,27 +36,35 @@
 #include <wil/result_macros.h>
 
 namespace common {
-	constexpr static wchar_t hookdict_pipe_name[] = L"\\\\.\\pipe\\hookdict_pipe";
+constexpr static wchar_t hookdict_pipe_name[] = L"\\\\.\\pipe\\hookdict_pipe";
 
-    static std::filesystem::path get_module_file_name_w(HMODULE handle)
-    {
-        std::array<wchar_t, MAX_PATH> out{};
+static std::filesystem::path get_module_file_name_w(HMODULE handle) {
+  std::array<wchar_t, MAX_PATH> out{};
 
-        DWORD res = ::GetModuleFileNameW(handle, out.data(), out.size());
+  DWORD res = ::GetModuleFileNameW(handle, out.data(), out.size());
 
-        THROW_LAST_ERROR_IF(res == 0);
+  THROW_LAST_ERROR_IF(res == 0);
 
-        return std::filesystem::path(out.begin(), out.begin() + res);
-    }
-
-    static std::filesystem::path get_module_file_name_w()
-    {
-        return get_module_file_name_w(NULL);
-    }
-
-    template <typename H>
-    static std::filesystem::path get_module_file_name_w(H&& handle)
-    {
-        return get_module_file_name_w(handle.get());
-    }
+  return std::filesystem::path(out.begin(), out.begin() + res);
 }
+
+static std::filesystem::path get_module_file_name_w() {
+  return get_module_file_name_w(NULL);
+}
+
+template <typename H>
+static std::filesystem::path get_module_file_name_w(H &&handle) {
+  return get_module_file_name_w(handle.get());
+}
+
+static bool is_valid_executable_name(auto&& name) {
+  std::filesystem::path p(name);
+  if (!p.has_extension())  {
+    return false;
+  }
+
+  auto ext = std::move(p).extension();
+  
+  return ext == ".EXE" || ext == ".exe";
+}
+} // namespace common

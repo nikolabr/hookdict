@@ -1,6 +1,7 @@
 {
     "dependencies": [
 	"minhook",
-	"fftwpp"
+	"fftwpp",
+	{ "name": "icu", "host": false}
     ]
 }

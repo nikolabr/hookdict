@@ -1,9 +1,13 @@
 ﻿#include "injector.h"
 
 #include <array>
+#include <bit>
+#include <clocale>
+#include <cwchar>
 #include <exception>
 #include <filesystem>
-#include <stdexcept>
+#include <iostream>
+#include <cstdlib>
 #include <string>
 
 #include "common.h"
@@ -12,7 +16,10 @@
 #include <wil/resource.h>
 #include <wil/result_macros.h>
 
-constexpr auto nPipeBufferSize = 4096;
+#include <io.h>
+#include <fcntl.h>
+
+constexpr auto pipe_buffer_size = 4096;
 
 wil::unique_process_handle open_process_by_pid(uint32_t pid) {
   auto hr = OpenProcess(PROCESS_ALL_ACCESS, false, pid);
@@ -56,27 +63,40 @@ void hook_to_process(DWORD dwPID, std::wstring const &dllName) {
 }
 
 int main(int argc, char *argv[]) {
+  SetConsoleOutputCP(CP_UTF8);
+  
   std::filesystem::path dllPath =
       std::filesystem::current_path() / "../target/hookdict_target.dll";
   dllPath = std::filesystem::absolute(dllPath);
 
   if (!std::filesystem::exists(dllPath)) {
-    std::wcerr << "Target DLL not found" << std::endl;
+    std::cerr << "Target DLL not found" << std::endl;
     return 1;
   }
 
   wil::unique_hfile pipe_handle(CreateNamedPipeW(
       common::hookdict_pipe_name, PIPE_ACCESS_INBOUND,
-      PIPE_TYPE_MESSAGE | PIPE_REJECT_REMOTE_CLIENTS, 1, 0, 0, 0, nullptr));
+      PIPE_TYPE_MESSAGE | PIPE_REJECT_REMOTE_CLIENTS, 1, pipe_buffer_size, pipe_buffer_size, 500, nullptr));
 
   THROW_LAST_ERROR_IF_MSG(!pipe_handle, "Failed to open pipe!");
 
-  std::wcout << "Created pipe" << std::endl;
+  std::cout << "Created pipe" << std::endl;
 
   try {
-    std::wstring proc_name;
-    std::wcout << "Process name: ";
-    std::wcin >> proc_name;
+    std::string proc_name;
+    
+    if (common::is_valid_executable_name(argv[1])) {
+      proc_name = std::string(argv[1]);
+    }
+    else { 
+      std::cout << "Process name: ";
+      std::cin >> proc_name;
+    }
+
+    if (proc_name.empty()) {
+      std::cerr << "Empty process name!" << std::endl;
+      return 1;
+    }
 
     std::transform(proc_name.begin(), proc_name.end(), proc_name.begin(),
                    towupper);
@@ -85,7 +105,7 @@ int main(int argc, char *argv[]) {
 
     auto it = std::find_if(
         procs.begin(), procs.end(), [&](const process_info &proc_info) {
-          auto filename = proc_info.m_module_name.filename().wstring();
+          auto filename = proc_info.m_module_name.filename().string();
           std::transform(filename.begin(), filename.end(), filename.begin(),
                          towupper);
 
@@ -95,41 +115,42 @@ int main(int argc, char *argv[]) {
     if (it != procs.end()) {
       hook_to_process(it->m_pid, dllPath);
     } else {
-      std::wcerr << "Failed to find process with name: " << proc_name << std::endl;
+      std::cerr << "Failed to find process with name: " << proc_name << std::endl;
       return 1;
     }
 
   } catch (std::exception const &ex) {
-    std::wcerr << ex.what();
+    std::cerr << ex.what();
     return 1;
   }
-
-  while (true) {
-    bool bRes = ConnectNamedPipe(pipe_handle.get(), nullptr);
-
-    if (!bRes) {
-      DWORD dwErrCode = GetLastError();
-      if (dwErrCode != ERROR_PIPE_CONNECTED) {
-        CloseHandle(pipe_handle.get());
-        return 1;
-      }
+  
+  bool bRes = ConnectNamedPipe(pipe_handle.get(), nullptr);
+  
+  if (!bRes) {
+    DWORD dwErrCode = GetLastError();
+    if (dwErrCode != ERROR_PIPE_CONNECTED) {
+      CloseHandle(pipe_handle.get());
+      return 1;
     }
-
-    std::array<wchar_t, nPipeBufferSize> buf{};
+  }
+  
+  std::array<char, pipe_buffer_size> buf{};
+  while (true) {
     using buf_element = decltype(buf)::value_type;
     buf.fill('\0');
-
+    
     DWORD nBytesRead = 0;
-    bRes = ReadFile(pipe_handle.get(), buf.data(), (buf.size() - 1) * sizeof(buf_element),
+    bRes = ::ReadFile(pipe_handle.get(), buf.data(), (buf.size() - 1) * sizeof(buf_element),
                     &nBytesRead, nullptr);
 
     if (!bRes) {
       CloseHandle(pipe_handle.get());
       return 1;
     }
-
-    buf[nBytesRead / sizeof(buf_element)] = '\0';
-    std::wcout << buf.data() << std::endl;
+    
+    // std::cout << "Received message, len " << nBytesRead << ": ";
+    
+    std::cout << buf.data();
   }
 
   return 0;

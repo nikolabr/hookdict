@@ -1,6 +1,7 @@
 #pragma once
 
 #include "base.h"
+#include "hook_manager.h"
 
 #include <memory>
 #include <string>

@@ -3,16 +3,22 @@
 #include <array>
 #include <bit>
 #include <clocale>
+#include <codecvt>
+#include <cstdio>
 #include <cwchar>
 #include <exception>
 #include <filesystem>
 #include <iostream>
 #include <cstdlib>
+#include <locale>
 #include <string>
 
 #include "common.h"
 #include "process_info.h"
 
+#include <unicode/ucnv_err.h>
+#include <unicode/urename.h>
+#include <unicode/utypes.h>
 #include <wil/resource.h>
 #include <wil/result_macros.h>
 
@@ -63,7 +69,10 @@ void hook_to_process(DWORD dwPID, std::wstring const &dllName) {
 }
 
 int main(int argc, char *argv[]) {
-  SetConsoleOutputCP(CP_UTF8);
+  SetConsoleOutputCP(65001);
+  SetConsoleCP(65001);
+
+  // WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), L"テスト\n", 3, nullptr, nullptr);
   
   std::filesystem::path dllPath =
       std::filesystem::current_path() / "../target/hookdict_target.dll";
@@ -133,6 +142,9 @@ int main(int argc, char *argv[]) {
       return 1;
     }
   }
+
+  UErrorCode uec = U_ZERO_ERROR;
+  UConverter* conv = ucnv_open("shift_jis", &uec);
   
   std::array<char, pipe_buffer_size> buf{};
   while (true) {
@@ -149,8 +161,16 @@ int main(int argc, char *argv[]) {
     }
     
     // std::cout << "Received message, len " << nBytesRead << ": ";
-    
-    std::cout << buf.data();
+    std::u16string u16_msg(256, '\0');
+    int32_t len = ucnv_toUChars(conv, u16_msg.data(), u16_msg.size() * sizeof(char16_t), buf.data(), -1, &uec);
+
+    if (U_FAILURE(uec)) {
+      std::cout << "ICU error" << std::endl;
+      return 1;
+    }
+
+    u16_msg.resize(len);
+    common::write_stdout_console(std::move(u16_msg));
   }
 
   return 0;

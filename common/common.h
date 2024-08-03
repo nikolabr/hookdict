@@ -7,6 +7,9 @@
 
   https://github.com/microsoft/wil/pull/454
  */
+#include <concepts>
+#include <string>
+#include <type_traits>
 #define _Frees_ptr_
 #define _Frees_ptr_opt_
 #define _Post_z_
@@ -57,14 +60,46 @@ static std::filesystem::path get_module_file_name_w(H &&handle) {
   return get_module_file_name_w(handle.get());
 }
 
-static bool is_valid_executable_name(auto&& name) {
+static bool is_valid_executable_name(auto &&name) {
   std::filesystem::path p(name);
-  if (!p.has_extension())  {
+  if (!p.has_extension()) {
     return false;
   }
 
   auto ext = std::move(p).extension();
-  
+
   return ext == ".EXE" || ext == ".exe";
+}
+
+template <typename T,
+          std::enable_if_t<std::constructible_from<std::u16string, T>, bool> = true>
+std::size_t write_stdout_console(T &&msg) {
+  HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+  THROW_LAST_ERROR_IF_NULL(stdout_handle);
+
+  const char16_t *buf = msg.c_str();
+  DWORD len = msg.size();
+  DWORD out = 0;
+
+  THROW_IF_WIN32_BOOL_FALSE(WriteConsoleW(
+      stdout_handle, reinterpret_cast<const void *>(buf), len, &out, nullptr));
+
+  return out;
+}
+
+template <typename T,
+          std::enable_if_t<std::constructible_from<std::string, T>, bool> = true>
+std::size_t write_stdout_console(T &&msg) {
+  HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+  THROW_LAST_ERROR_IF_NULL(stdout_handle);
+
+  const wchar_t *buf = msg.c_str();
+  DWORD len = msg.size();
+  DWORD out = 0;
+
+  THROW_IF_WIN32_BOOL_FALSE(WriteConsoleA(
+      stdout_handle, reinterpret_cast<const void *>(buf), len, &out, nullptr));
+
+  return out;
 }
 } // namespace common

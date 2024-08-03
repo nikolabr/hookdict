@@ -41,7 +41,7 @@ static void create_pipe() {
 static void write_to_pipe(wil::shared_hfile pipe_handle, auto &&msg) {
   const std::string pipemsg(msg);
   BOOL res = ::WriteFile(pipe_handle.get(), pipemsg.c_str(),
-                         pipemsg.size() * sizeof(wchar_t), nullptr, nullptr);
+                         pipemsg.size(), nullptr, nullptr);
   if (!res) {
     write_msg(L"Could not write to pipe");
   }

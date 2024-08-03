@@ -4,6 +4,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
 #include <string>
 
 #include "mbstring.h"
@@ -27,23 +28,30 @@ targets::kid::ever17::try_create(hook_manager &hm, wil::shared_hfile pipe) {
   auto ptr = std::make_shared<ever17>();
   ptr->m_pipe = pipe;
   g_ever17 = ptr;
-  ptr->m_original_textoutw = hm.enable_hook(TextOutA, &fake_TextOutA);
-
-  // wil::unique_hmodule module(GetModuleHandleW(L"GDI32.DLL"));
-  // LOG_LAST_ERROR_IF_NULL(module);
-
-  // FARPROC original_text_out_w = ::GetProcAddress(module.get(), "TextOutW");
-  // LOG_LAST_ERROR_IF_NULL(original_text_out_w);
-
-  // ptr->m_original_textoutw = hm.enable_hook(reinterpret_cast<ever17::TextOutW_t>(original_text_out_w), &fake_TextOutW);
-  LOG_IF_NULL_ALLOC_MSG(ptr->m_original_textoutw, "Failed to create TextOutW hook\n");
+  
+  ptr->m_textoutw_hook.enable(hm, textoutw_hook::fake_call);
 
   return ptr;
 }
 
-__attribute__((stdcall)) BOOL ever17::fake_TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c) {
-  write_to_pipe(g_pipe, lpString);
-  return g_ever17->m_original_textoutw(hdc, x, y, lpString, c);
+// __attribute__((stdcall)) BOOL ever17::fake_TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c) {
+//   write_to_pipe(g_pipe, lpString);
+//   return g_ever17->m_original_textoutw(hdc, x, y, lpString, c);
+// }
+
+__attribute__((stdcall)) ever17::textoutw_hook::return_t ever17::textoutw_hook::fake_call(HDC hdc, int x, int y, LPCSTR lpString, int c) {
+  std::ostringstream os;
+  os << "Device context handle: " << (void*)hdc << " ";
+  os << "X: " << x << " ";
+  os << "Y: " << y << " ";
+  os << "Text: " << lpString << " ";
+  os << "c: " << c << " ";
+  os << std::endl;
+  
+  std::string out_msg = os.str();
+  write_to_pipe(g_ever17->m_pipe, std::move(out_msg));
+  
+  return g_ever17->m_textoutw_hook.m_old_ptr(hdc, x, y, lpString, c);
 }
 
 ever17::~ever17()

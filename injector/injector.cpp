@@ -160,7 +160,6 @@ int main(int argc, char *argv[]) {
       return 1;
     }
     
-    // std::cout << "Received message, len " << nBytesRead << ": ";
     std::u16string u16_msg(256, '\0');
     int32_t len = ucnv_toUChars(conv, u16_msg.data(), u16_msg.size() * sizeof(char16_t), buf.data(), -1, &uec);
 

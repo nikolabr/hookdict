@@ -18,7 +18,7 @@ namespace targets {
 	
 	static __attribute__((stdcall)) return_t fake_call(HDC__ *hdc, int x, int y, const char *lpString, int c);
       };
-
+      
       static constexpr wchar_t s_target_name[] = L"kid::ever17";
 
       static std::shared_ptr<ever17> try_create(hook_manager& hm, wil::shared_hfile pipe);

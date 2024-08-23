@@ -5,6 +5,7 @@
 #include "hook_manager.h"
 #include "wil/result.h"
 #include "wil/result_macros.h"
+#include "wil/stl.h"
 
 #include <any>
 #include <tuple>
@@ -13,7 +14,7 @@
 #include <wil/result.h>
 
 static hook_manager g_hm;
-
+static wil::unique_event_nothrow ev;
 
 template <typename T>
 using target_factory_t = std::shared_ptr<T> (*)(hook_manager &,
@@ -61,7 +62,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call,
     if (!res) {
       return true;
     }
-
+      
     std::filesystem::path module_path = common::get_module_file_name_w();
     // write_to_pipe(g_pipe, module_path.string().c_str());
 
@@ -79,6 +80,14 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call,
     } else {
       g_target = std::any(std::move(target_ptr));
       write_to_pipe(g_pipe, "Target created\n");
+    }
+
+    {
+      HWND hwnd = GetTopWindow(NULL);
+      static_assert(sizeof(HWND) == sizeof(uint32_t));
+      std::string msg = std::to_string(reinterpret_cast<uint32_t>(hwnd));
+      msg = "WINDOWHANDLE" + msg;
+      write_to_pipe(g_pipe, msg);
     }
   } else if (ul_reason_for_call == DLL_PROCESS_DETACH) {
     g_target.reset();

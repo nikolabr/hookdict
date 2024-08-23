@@ -29,7 +29,6 @@
 
 #include <array>
 #include <filesystem>
-#include <memory>
 
 #include <wil/stl.h>
 
@@ -40,6 +39,12 @@
 
 namespace common {
 constexpr static wchar_t hookdict_pipe_name[] = L"\\\\.\\pipe\\hookdict_pipe";
+
+constexpr static wchar_t hookdict_shmem[] = L"Global\\HookdictSharedBuffer";
+constexpr std::size_t shmem_buffer_size = 0x1000000;
+
+constexpr static wchar_t hookdict_event[] = L"HookdictSharedEvent";
+constexpr static wchar_t hookdict_semaphore[] = L"HookdictSemaphore";
 
 static std::filesystem::path get_module_file_name_w(HMODULE handle) {
   std::array<wchar_t, MAX_PATH> out{};
@@ -71,8 +76,9 @@ static bool is_valid_executable_name(auto &&name) {
   return ext == ".EXE" || ext == ".exe";
 }
 
-template <typename T,
-          std::enable_if_t<std::constructible_from<std::u16string, T>, bool> = true>
+template <
+    typename T,
+    std::enable_if_t<std::constructible_from<std::u16string, T>, bool> = true>
 std::size_t write_stdout_console(T &&msg) {
   HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
   THROW_LAST_ERROR_IF_NULL(stdout_handle);
@@ -87,8 +93,8 @@ std::size_t write_stdout_console(T &&msg) {
   return out;
 }
 
-template <typename T,
-          std::enable_if_t<std::constructible_from<std::string, T>, bool> = true>
+template <typename T, std::enable_if_t<std::constructible_from<std::string, T>,
+                                       bool> = true>
 std::size_t write_stdout_console(T &&msg) {
   HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
   THROW_LAST_ERROR_IF_NULL(stdout_handle);

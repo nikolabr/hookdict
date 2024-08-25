@@ -40,16 +40,23 @@ targets::kid::ever17::try_create(hook_manager &hm, wil::shared_hfile pipe) {
 // }
 
 __attribute__((stdcall)) ever17::textoutw_hook::return_t ever17::textoutw_hook::fake_call(HDC hdc, int x, int y, LPCSTR lpString, int c) {
-  std::ostringstream os;
-  os << "Device context handle: " << (void*)hdc << " ";
-  os << "X: " << x << " ";
-  os << "Y: " << y << " ";
-  os << "Text: " << lpString << " ";
-  os << "c: " << c << " ";
-  os << std::endl;
+  // std::ostringstream os;
+  // os << "Device context handle: " << (void*)hdc << " ";
+  // os << "X: " << x << " ";
+  // os << "Y: " << y << " ";
+  // os << "Text: " << lpString << " ";
+  // os << "c: " << c << " ";
+  // os << std::endl;
   
-  std::string out_msg = os.str();
-  write_to_pipe(g_ever17->m_pipe, std::move(out_msg));
+  // std::string out_msg = os.str();
+  // write_to_pipe(g_ever17->m_pipe, std::move(out_msg));
+
+  std::string cur(lpString);
+
+  if (cur != g_ever17->m_prev) {
+    write_to_pipe(g_ever17->m_pipe, cur);  
+  }
+  g_ever17->m_prev = std::move(cur);
   
   return g_ever17->m_textoutw_hook.m_old_ptr(hdc, x, y, lpString, c);
 }

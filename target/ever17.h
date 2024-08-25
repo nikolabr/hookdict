@@ -12,6 +12,7 @@ namespace targets {
     {
       wil::shared_hfile m_pipe;
 
+      std::string m_prev;
     public:
       struct textoutw_hook : hooks::hook_base<decltype(&TextOutA), HDC, int, int, LPCSTR, int> {
 	using hook_base::hook_base;

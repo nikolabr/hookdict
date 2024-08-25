@@ -1,5 +1,7 @@
 #pragma once
 
+#include <windows.h>
+
 #include "base.h"
 #include "hook_manager.h"
 

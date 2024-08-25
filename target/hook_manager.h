@@ -1,4 +1,6 @@
 #pragma once
+#include "common.h"
+#include <windows.h>
 
 #include "MinHook.h"
 #include "base.h"

@@ -2,30 +2,44 @@
 
 #pragma once
 
-/*
-  WIL options
+#include <Windows.h>
 
-  https://github.com/microsoft/wil/pull/454
- */
-#include <concepts>
-#include <string>
-#include <type_traits>
-#define _Frees_ptr_
-#define _Frees_ptr_opt_
-#define _Post_z_
-#define _Pre_maybenull_
-#define _Pre_opt_valid_
-#define _Pre_valid_
-#define _Ret_opt_bytecap_(size)
-#define _Translates_last_error_to_HRESULT_
-#define _Translates_NTSTATUS_to_HRESULT_(status)
-#define _Translates_Win32_to_HRESULT_(err)
-#define InterlockedDecrementNoFence InterlockedDecrement
-#define InterlockedIncrementNoFence InterlockedIncrement
-#define WIL_NO_SLIM_EVENT
+#ifndef _WIN32
+    /*
+      WIL options
 
-#include <windows.h>
-#include <winsock2.h>
+      https://github.com/microsoft/wil/pull/454
+     */
+    #include <concepts>
+    #include <string>
+    #include <type_traits>
+    #define _Frees_ptr_
+    #define _Frees_ptr_opt_
+    #define _Post_z_
+    #define _Pre_maybenull_
+    #define _Pre_opt_valid_
+    #define _Pre_valid_
+    #define _Ret_opt_bytecap_(size)
+    #define _Translates_last_error_to_HRESULT_
+    #define _Translates_NTSTATUS_to_HRESULT_(status)
+    #define _Translates_Win32_to_HRESULT_(err)
+    #define InterlockedDecrementNoFence InterlockedDecrement
+    #define InterlockedIncrementNoFence InterlockedIncrement
+    #define WIL_NO_SLIM_EVENT
+#endif
+
+#include <intrin.h>
+#include <windef.h>
+#include <winnt.h>
+
+#include <WinBase.h>
+
+#include <consoleapi.h>
+#include <consoleapi2.h>
+#include <stringapiset.h>
+#include <winuser.h>
+#include <wingdi.h>
+#include <processthreadsapi.h>
 
 #include <array>
 #include <filesystem>

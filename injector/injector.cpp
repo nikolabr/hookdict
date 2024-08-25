@@ -16,9 +16,8 @@
 #include "common.h"
 #include "process_info.h"
 
-#include <unicode/ucnv_err.h>
-#include <unicode/urename.h>
-#include <unicode/utypes.h>
+#include "icu.h"
+
 #include <wil/resource.h>
 #include <wil/result_macros.h>
 
@@ -50,7 +49,7 @@ void thread_func() {
 
   ::SelectObject(mem_dc.get(), hbm.get());
 
-  WINBOOL b = BitBlt(mem_dc.get(), 0, 0, rcWnd.right - rcWnd.left,
+  BOOL b = BitBlt(mem_dc.get(), 0, 0, rcWnd.right - rcWnd.left,
                      rcWnd.bottom - rcWnd.top, wnd_dc.get(), 0, 0, SRCCOPY);
   LOG_LAST_ERROR_IF(b == FALSE);
 
@@ -205,7 +204,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::transform(proc_name.begin(), proc_name.end(), proc_name.begin(),
-                   towupper);
+        [](char c) { return static_cast<char>(std::toupper(c)); });
 
     std::vector procs = process_info::enum_processes();
 
@@ -213,7 +212,7 @@ int main(int argc, char *argv[]) {
         procs.begin(), procs.end(), [&](const process_info &proc_info) {
           auto filename = proc_info.m_module_name.filename().string();
           std::transform(filename.begin(), filename.end(), filename.begin(),
-                         towupper);
+              [](char c) { return static_cast<char>(std::toupper(c)); });
 
           return !filename.empty() && filename == proc_name;
         });

@@ -1,11 +1,11 @@
 #pragma once
 
+#include <windows.h>
+
 #include "common.h"
 #include "hooks.h"
 
 #include "fastcorr.h"
-
-#include <windows.h>
 
 #include <format>
 #include <list>

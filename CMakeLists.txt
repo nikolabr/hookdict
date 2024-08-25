@@ -25,14 +25,14 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(wil)
 
-find_package(PkgConfig REQUIRED)
 find_package(minhook CONFIG REQUIRED)
-pkg_check_modules(ICU REQUIRED IMPORTED_TARGET icu-i18n)
+#pkg_check_modules(ICU REQUIRED IMPORTED_TARGET icu-i18n)
+find_package(ICU 61.0 COMPONENTS i18n REQUIRED)
 # find_package(FFTW3 CONFIG REQUIRED)
 
 # windows.h max collides with std::max in fftwpp
 # add_definitions(/DNOMINMAX /D_WINSOCKAPI_)
-add_definitions(/DNOMINMAX)
+add_definitions(/DNOMINMAX /D_X86_)
 
 # サブプロジェクトを含めます。
 add_subdirectory("common")

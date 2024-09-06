@@ -2,6 +2,7 @@ target("target")
 	set_kind("shared")
 	
 	add_cxflags("-fms-extensions")
+	add_shflags("-static-libgcc -static-libstdc++", {force = true})
 	set_languages("c11", "cxx20")
 
 	add_deps("common")

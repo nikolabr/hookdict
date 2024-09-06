@@ -1,4 +1,4 @@
 target("fastcorr")
-	set_kind("library")
+	set_kind("static")
 	add_files("*.cpp")
 	add_includedirs(".", {public = true})

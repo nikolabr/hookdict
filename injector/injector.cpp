@@ -16,7 +16,7 @@
 #include "common.h"
 #include "process_info.h"
 
-#include "icu.h"
+// #include "icu.h"
 
 #include <wil/resource.h>
 #include <wil/result_macros.h>
@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
   // nullptr);
 
   std::filesystem::path dllPath =
-      std::filesystem::current_path() / "../target/hookdict_target.dll";
+      std::filesystem::current_path() / "libtarget.dll";
   dllPath = std::filesystem::absolute(dllPath);
 
   if (!std::filesystem::exists(dllPath)) {
@@ -245,8 +245,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  UErrorCode uec = U_ZERO_ERROR;
-  UConverter *conv = ucnv_open("shift_jis", &uec);
+  // UErrorCode uec = U_ZERO_ERROR;
+  // UConverter *conv = ucnv_open("shift_jis", &uec);
 
   std::array<char, pipe_buffer_size> buf{};
   while (true) {
@@ -279,18 +279,18 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    std::u16string u16_msg(256, '\0');
-    int32_t len =
-        ucnv_toUChars(conv, u16_msg.data(), u16_msg.size() * sizeof(char16_t),
-                      buf.data(), -1, &uec);
+    // std::u16string u16_msg(256, '\0');
+    // int32_t len =
+    //     ucnv_toUChars(conv, u16_msg.data(), u16_msg.size() * sizeof(char16_t),
+    //                   buf.data(), -1, &uec);
 
-    if (U_FAILURE(uec)) {
-      std::cout << "ICU error" << std::endl;
-      return 1;
-    }
+    // if (U_FAILURE(uec)) {
+    //   std::cout << "ICU error" << std::endl;
+    //   return 1;
+    // }
 
-    u16_msg.resize(len);
-    common::write_stdout_console(std::move(u16_msg));
+    // u16_msg.resize(len);
+    // common::write_stdout_console(std::move(u16_msg));
   }
 
   return 0;

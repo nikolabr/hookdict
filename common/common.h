@@ -4,7 +4,7 @@
 
 #include <Windows.h>
 
-#ifndef _WIN32
+#ifdef __MINGW32__
     /*
       WIL options
 
@@ -32,14 +32,13 @@
 #include <windef.h>
 #include <winnt.h>
 
-#include <WinBase.h>
+#include <winbase.h>
 
-#include <consoleapi.h>
-#include <consoleapi2.h>
 #include <stringapiset.h>
 #include <winuser.h>
 #include <wingdi.h>
 #include <processthreadsapi.h>
+#include <wincon.h>
 
 #include <array>
 #include <filesystem>

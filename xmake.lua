@@ -1,3 +1,5 @@
+add_rules("mode.debug", "mode.release")
+
 add_requires("conan::wil/1.0.240803.1",
 	{
 		alias = "wil",
@@ -10,5 +12,6 @@ add_syslinks("kernel32", "user32", "gdi32", "winspool", "shell32", "ole32", "ole
 
 includes("common")
 includes("fastcorr")
-includes("injector")
 includes("target")
+includes("injector")
+

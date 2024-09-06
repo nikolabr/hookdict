@@ -8,11 +8,9 @@ A WIP tool for making looking up text inside of untranslated visual novels easie
 
 This project is built using xmake: https://xmake.io/
 
-Conan is also required.
-
 ### Linux
 
-The llvm-mingw toolchain is the recommended toolchain for cross-compiling on Linux. You need a compiler that supports `-fms-extensions` for building WIL. AFAIK, clang is the only compiler with that flag available.
+The llvm-mingw toolchain is the recommended toolchain for cross-compiling on Linux.
 
 To configure the xmake platform and toolchain:
 

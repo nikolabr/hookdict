@@ -4,23 +4,21 @@
 #include <array>
 #include <iterator>
 
-#include <psapi.h>
 #include <windows.h>
+#include <psapi.h>
 
 constexpr std::size_t max_process_to_enumerate = 1024;
 
 std::wstring process_info::get_process_name(uint32_t pid) {
   std::array<wchar_t, MAX_PATH> buf;
 
-  wil::unique_process_handle proc_handle(
-      OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid));
+  HANDLE proc_handle = ::OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid);
   if (proc_handle == NULL) {
     return L"";
   }
 
   DWORD res =
-      GetModuleFileNameExW(proc_handle.get(), nullptr, buf.data(), buf.size());
-  THROW_LAST_ERROR_IF(res == 0);
+    ::GetModuleFileNameExW(proc_handle, nullptr, buf.data(), buf.size());
 
   return std::wstring(buf.data(), res);
 }
@@ -31,7 +29,6 @@ std::vector<process_info> process_info::enum_processes() {
   DWORD returned = 0;
   DWORD dwRes =
       EnumProcesses(processes_arr.data(), processes_arr.size(), &returned);
-  THROW_LAST_ERROR_IF(dwRes == 0);
 
   std::vector<process_info> res;
 

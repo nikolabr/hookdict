@@ -31,22 +31,21 @@ struct glyph_cache {
   std::list<glyph_info> m_glyphs;
 };
 
-extern wil::shared_hfile g_pipe;
+extern HANDLE g_pipe;
 
 static void create_pipe() {
-  g_pipe = wil::shared_hfile(
-      CreateFileW(common::hookdict_pipe_name, GENERIC_WRITE, FILE_SHARE_WRITE,
-                  nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+  g_pipe = CreateFileW(common::hookdict_pipe_name, GENERIC_WRITE, FILE_SHARE_WRITE,
+		       nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 }
 
-static void write_to_pipe(wil::shared_hfile pipe_handle, auto &&msg) {
+static void write_to_pipe(HANDLE pipe_handle, auto &&msg) {
   const std::string pipemsg(msg);
-  BOOL res = ::WriteFile(pipe_handle.get(), pipemsg.c_str(),
+  BOOL res = ::WriteFile(pipe_handle, pipemsg.c_str(),
                          pipemsg.size(), nullptr, nullptr);
   if (!res) {
     write_msg(L"Could not write to pipe");
   }
-  LOG_IF_WIN32_BOOL_FALSE(res);
+
 }
 
 namespace targets {

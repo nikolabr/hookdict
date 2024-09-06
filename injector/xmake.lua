@@ -1,11 +1,7 @@
 target("injector")
-	add_cxflags("-fms-extensions")
-	
 	add_cxxflags("-stdlib=libc++")
 	set_languages("c11", "cxx20")
 
-	add_packages("wil")
-	
 	add_deps("common")
 	
 	set_kind("binary")

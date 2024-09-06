@@ -1,7 +1,6 @@
 target("target")
 	set_kind("shared")
 	
-	add_cxflags("-fms-extensions")
 	add_cxxflags("-stdlib=libc++")
 
 	-- Needs to be linked statically, because there is no guarantee that the target exe can find the GCC DLLs
@@ -13,7 +12,6 @@ target("target")
 	add_deps("fastcorr")
 	
 	add_packages("minhook")
-	add_packages("wil")
 
 	add_files("*.cpp")
 	

@@ -1,6 +1,5 @@
 #include "ever17.h"
 #include "base.h"
-#include "wil/result_macros.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -14,7 +13,7 @@ using namespace targets::kid;
 static std::shared_ptr<ever17> g_ever17 = nullptr;
 
 std::shared_ptr<ever17>
-targets::kid::ever17::try_create(hook_manager &hm, wil::shared_hfile pipe) {
+targets::kid::ever17::try_create(hook_manager &hm, HANDLE pipe) {
   std::filesystem::path module_path = common::get_module_file_name_w();
 
   auto filename = std::move(module_path).filename().wstring();

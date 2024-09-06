@@ -1,8 +1,8 @@
 ﻿#include "injector.h"
 
 #include <array>
-#include <cstdint>
 #include <atomic>
+#include <cstdint>
 #include <cwchar>
 #include <exception>
 #include <filesystem>
@@ -13,67 +13,76 @@
 #include "common.h"
 #include "process_info.h"
 
-#include <wil/resource.h>
-#include <wil/result_macros.h>
-
 constexpr auto pipe_buffer_size = 4096;
 
 std::atomic<HWND> atomic_hwnd{NULL};
 
-wil::unique_process_handle open_process_by_pid(uint32_t pid) {
+HANDLE open_process_by_pid(uint32_t pid) {
   auto hr = OpenProcess(PROCESS_ALL_ACCESS, false, pid);
-  LOG_LAST_ERROR_IF_NULL(hr);
+  return hr;
+}
 
-  wil::unique_process_handle process_handle(hr);
-  return process_handle;
+[[noreturn]] void throw_system_error(const std::string& msg, DWORD dwErrCode = GetLastError()) {
+	throw std::system_error(dwErrCode, std::system_category(), msg);
 }
 
 void hook_to_process(DWORD dwPID, std::wstring const &dllName) {
-  auto process_handle = open_process_by_pid(dwPID);
-  THROW_LAST_ERROR_IF_NULL(process_handle);
+  HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, false, dwPID);
 
-  wil::unique_hmodule kernel32(::GetModuleHandleW(L"KERNEL32.DLL"));
-  THROW_LAST_ERROR_IF_NULL(kernel32);
+  bool bRes = true;
 
-  FARPROC load_library_w = GetProcAddress(kernel32.get(), "LoadLibraryW");
-  THROW_LAST_ERROR_IF_NULL(load_library_w);
+  if (hProcess == NULL) {
+    DWORD dwErrCode = GetLastError();
+    if (dwErrCode == ERROR_ACCESS_DENIED) {
+      // TODO : Elevate injector if target is elevated
+    } else {
+      throw_system_error("Failed to open process handle");
+    }
 
-  size_t string_len = wcslen(dllName.c_str()) * sizeof(wchar_t);
-  wil::unique_virtualalloc_ptr<void> remote_string(
-      ::VirtualAllocEx(process_handle.get(), nullptr, string_len + 1,
-                       MEM_COMMIT, PAGE_READWRITE));
-  THROW_LAST_ERROR_IF_NULL(remote_string);
-
-  THROW_IF_WIN32_BOOL_FALSE(::WriteProcessMemory(
-      process_handle.get(), remote_string.get(),
-      reinterpret_cast<void const *>(dllName.c_str()), string_len, nullptr));
-
-  wil::unique_handle thread_handle(::CreateRemoteThread(
-      process_handle.get(), nullptr, 0, (LPTHREAD_START_ROUTINE)load_library_w,
-      remote_string.get(), 0, nullptr));
-
-  if (thread_handle) {
-    wil::handle_wait(thread_handle.get(), 500);
+    return;
   }
 
-  VirtualFreeEx(process_handle.get(), remote_string.release(), 0, MEM_RELEASE);
+  size_t nLen = wcslen(dllName.c_str()) * sizeof(WCHAR);
+  HINSTANCE hKernel32 = GetModuleHandleW(L"KERNEL32.DLL");
+
+  if (hKernel32 == NULL) {
+    throw_system_error("Failed to get KERNEL32.DLL handle");
+    return;
+  }
+
+  void *lpLoadLibraryW = reinterpret_cast<void*>(::GetProcAddress(hKernel32, "LoadLibraryW"));
+  if (!lpLoadLibraryW) {
+    throw_system_error("Failed to get LoadLibraryW address");
+    return;
+  }
+
+  void *lpRemoteString =
+      VirtualAllocEx(hProcess, nullptr, nLen + 1, MEM_COMMIT, PAGE_READWRITE);
+  if (lpRemoteString == NULL) {
+    throw_system_error("Failed to allocate in target");
+    return;
+  }
+
+  bRes = WriteProcessMemory(hProcess, lpRemoteString, dllName.c_str(), nLen,
+                            nullptr);
+  if (!bRes) {
+    throw_system_error("Could not write to process memory");
+    return;
+  }
+
+  HANDLE hThread = CreateRemoteThread(hProcess, nullptr, 0,
+                                      (LPTHREAD_START_ROUTINE)lpLoadLibraryW,
+                                      lpRemoteString, 0, nullptr);
+
+  if (hThread) {
+    WaitForSingleObject(hThread, 500);
+  }
+
+  VirtualFreeEx(hProcess, lpRemoteString, 0, MEM_RELEASE);
+
+  CloseHandle(hProcess);
 
   return;
-}
-
-wil::unique_handle create_shmem_file() {
-  auto res = wil::unique_handle(
-      CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0,
-                         common::shmem_buffer_size, common::hookdict_shmem));
-  THROW_LAST_ERROR_IF_NULL(res);
-  return res;
-}
-
-wil::unique_mapview_ptr<> create_mapview(wil::unique_handle const &file) {
-  auto res = wil::unique_mapview_ptr<>(MapViewOfFile(
-      file.get(), FILE_MAP_ALL_ACCESS, 0, 0, common::shmem_buffer_size));
-  THROW_LAST_ERROR_IF_NULL(res);
-  return res;
 }
 
 int main(int argc, char *argv[]) {
@@ -92,12 +101,10 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  wil::unique_hfile pipe_handle(
+  HANDLE pipe_handle =
       CreateNamedPipeW(common::hookdict_pipe_name, PIPE_ACCESS_INBOUND,
                        PIPE_TYPE_MESSAGE | PIPE_REJECT_REMOTE_CLIENTS, 1,
-                       pipe_buffer_size, pipe_buffer_size, 500, nullptr));
-
-  THROW_LAST_ERROR_IF_MSG(!pipe_handle, "Failed to open pipe!");
+                       pipe_buffer_size, pipe_buffer_size, 500, nullptr);
 
   std::cout << "Created pipe" << std::endl;
 
@@ -117,14 +124,15 @@ int main(int argc, char *argv[]) {
     }
 
     std::transform(proc_name.begin(), proc_name.end(), proc_name.begin(),
-        [](char c) { return static_cast<char>(std::toupper(c)); });
+                   [](char c) { return static_cast<char>(std::toupper(c)); });
 
     std::vector procs = process_info::enum_processes();
 
     auto it = std::find_if(
         procs.begin(), procs.end(), [&](const process_info &proc_info) {
           auto filename = proc_info.m_module_name.filename().string();
-          std::transform(filename.begin(), filename.end(), filename.begin(),
+          std::transform(
+              filename.begin(), filename.end(), filename.begin(),
               [](char c) { return static_cast<char>(std::toupper(c)); });
 
           return !filename.empty() && filename == proc_name;
@@ -148,12 +156,12 @@ int main(int argc, char *argv[]) {
   // auto shmem_file = create_shmem_file();
   // auto shmem_view = create_mapview(shmem_file);
 
-  bool bRes = ConnectNamedPipe(pipe_handle.get(), nullptr);
+  bool bRes = ConnectNamedPipe(pipe_handle, nullptr);
 
   if (!bRes) {
     DWORD dwErrCode = GetLastError();
     if (dwErrCode != ERROR_PIPE_CONNECTED) {
-      CloseHandle(pipe_handle.get());
+      CloseHandle(pipe_handle);
       return 1;
     }
   }
@@ -164,20 +172,21 @@ int main(int argc, char *argv[]) {
     buf.fill('\0');
 
     DWORD nBytesRead = 0;
-    bRes = ::ReadFile(pipe_handle.get(), buf.data(),
+    bRes = ::ReadFile(pipe_handle, buf.data(),
                       (buf.size() - 1) * sizeof(buf_element), &nBytesRead,
                       nullptr);
 
     if (!bRes) {
-      CloseHandle(pipe_handle.get());
+      CloseHandle(pipe_handle);
       return 1;
     }
 
     std::string_view sv(buf.data(), nBytesRead);
-    
+
     // std::u16string u16_msg(256, '\0');
     // int32_t len =
-    //     ucnv_toUChars(conv, u16_msg.data(), u16_msg.size() * sizeof(char16_t),
+    //     ucnv_toUChars(conv, u16_msg.data(), u16_msg.size() *
+    //     sizeof(char16_t),
     //                   buf.data(), -1, &uec);
 
     // if (U_FAILURE(uec)) {

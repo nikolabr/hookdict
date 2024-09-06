@@ -4,22 +4,16 @@
 #include "common.h"
 #include "ever17.h"
 #include "hook_manager.h"
-#include "wil/result.h"
-#include "wil/result_macros.h"
-#include "wil/stl.h"
 
 #include <any>
 #include <tuple>
 #include <utility>
 
-#include <wil/result.h>
-
 static hook_manager g_hm;
-static wil::unique_event_nothrow ev;
 
 template <typename T>
 using target_factory_t = std::shared_ptr<T> (*)(hook_manager &,
-                                                wil::shared_hfile);
+                                                HANDLE);
 
 template <typename T>
 static std::shared_ptr<T>
@@ -58,7 +52,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call,
     }
 
     DWORD dwMode = PIPE_READMODE_MESSAGE;
-    auto res = SetNamedPipeHandleState(g_pipe.get(), &dwMode, nullptr, nullptr);
+    auto res = SetNamedPipeHandleState(g_pipe, &dwMode, nullptr, nullptr);
 
     if (!res) {
       return true;
@@ -66,12 +60,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call,
       
     std::filesystem::path module_path = common::get_module_file_name_w();
     // write_to_pipe(g_pipe, module_path.string().c_str());
-
-    auto monitor = wil::ThreadFailureCallback([pipe = wil::shared_hfile(g_pipe)](wil::FailureInfo const& fail) {
-      write_to_pipe(pipe, fail.pszFunction);
-      
-      return false;
-    });
 
     g_hm.init();
     auto target_ptr = try_to_create_target(targets::kid::ever17::try_create);
@@ -92,7 +80,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call,
     }
   } else if (ul_reason_for_call == DLL_PROCESS_DETACH) {
     g_target.reset();
-    g_pipe.reset();
+    CloseHandle(g_pipe);
     g_hm.uninit();
   }
   return TRUE;

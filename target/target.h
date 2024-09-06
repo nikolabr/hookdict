@@ -1,7 +1,6 @@
 #pragma once
 
-#include <winsock2.h>
-#include <windows.h>
+#include <Windows.h>
 
 #include "hook_manager.h"
 #include "base.h"

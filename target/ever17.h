@@ -16,8 +16,9 @@ namespace targets {
     public:
       struct textoutw_hook : hooks::hook_base<decltype(&TextOutA), HDC, int, int, LPCSTR, int> {
 	using hook_base::hook_base;
+    using return_t = hook_base::return_t;
 	
-	static __attribute__((stdcall)) return_t fake_call(HDC__ *hdc, int x, int y, const char *lpString, int c);
+	static return_t WINAPI fake_call(HDC hdc, int x, int y, const char *lpString, int c);
       };
       
       static constexpr wchar_t s_target_name[] = L"kid::ever17";

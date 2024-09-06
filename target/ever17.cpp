@@ -39,7 +39,7 @@ targets::kid::ever17::try_create(hook_manager &hm, wil::shared_hfile pipe) {
 //   return g_ever17->m_original_textoutw(hdc, x, y, lpString, c);
 // }
 
-__attribute__((stdcall)) ever17::textoutw_hook::return_t ever17::textoutw_hook::fake_call(HDC hdc, int x, int y, LPCSTR lpString, int c) {
+ever17::textoutw_hook::return_t WINAPI ever17::textoutw_hook::fake_call(HDC hdc, int x, int y, LPCSTR lpString, int c) {
   // std::ostringstream os;
   // os << "Device context handle: " << (void*)hdc << " ";
   // os << "X: " << x << " ";

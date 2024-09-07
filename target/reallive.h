@@ -19,12 +19,7 @@ namespace targets {
 
 		static DWORD WINAPI fakeGetGlyphOutlineA(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, const MAT2* lpmat2);
 		static uint32_t __stdcall fake_d3d_draw(uint32_t arg);
-
-		friend void target_log<reallive>(const reallive& target, std::wstring const& wstr);
-
 	public:
-		glyph_cache gc;
-		HANDLE m_hPipe = NULL;
 
 		static std::unique_ptr<reallive> create(hook_manager& hm, HANDLE hPipe);
 		void close(hook_manager& hm);

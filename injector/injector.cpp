@@ -1,12 +1,9 @@
 ﻿#include "injector.h"
 
-#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cwchar>
-#include <exception>
-#include <filesystem>
 
-#include <iostream>
 #include <rpc/server.h>
 #include <string>
 #include <system_error>
@@ -14,6 +11,7 @@
 #include <boost/outcome.hpp>
 #include <boost/outcome/outcome.hpp>
 
+#include "boost/winapi/character_code_conversion.hpp"
 #include "common.h"
 #include "process_info.h"
 
@@ -78,7 +76,7 @@ outcome::result<void> hook_to_process(DWORD dwPID,
   if (hThread) {
     WaitForSingleObject(hThread, 500);
   }
-
+  
   VirtualFreeEx(hProcess, lpRemoteString, 0, MEM_RELEASE);
 
   CloseHandle(hProcess);
@@ -86,11 +84,33 @@ outcome::result<void> hook_to_process(DWORD dwPID,
   return outcome::success();
 }
 
+void on_target_msg(std::string const& text, uint32_t codepage) {
+  if (codepage != 932) {
+    std::cerr << "Target codepage is not Shift-JIS" << std::endl;
+  }
+  std::size_t len = ::MultiByteToWideChar(codepage, 0, text.c_str(), text.size(), nullptr, 0);
+
+  std::wstring out(len, L'\0');
+  DWORD res = ::MultiByteToWideChar(codepage, 0, text.c_str(), text.size(), out.data(), out.size());
+  if (res == 0) {
+    std::cerr << "Multibyte conversion error" << std::endl;
+  }
+  else {
+    common::write_stdout_console(out);
+  }
+}
+
 int main(int argc, char *argv[]) {
   // Set UTF-16 console
   SetConsoleOutputCP(65001);
   SetConsoleCP(65001);
 
+  rpc::server server("127.0.0.1", common::hookdict_port);
+  
+  server.bind("target_msg", on_target_msg);
+
+  server.async_run();
+  
   std::filesystem::path dllPath =
       std::filesystem::current_path() / "libtarget.dll";
   dllPath = std::filesystem::absolute(dllPath);
@@ -99,13 +119,6 @@ int main(int argc, char *argv[]) {
     std::cerr << "Target DLL does not exist";
     return 1;
   }
-
-  HANDLE pipe_handle =
-      ::CreateNamedPipeW(common::hookdict_pipe_name, PIPE_ACCESS_INBOUND,
-                         PIPE_TYPE_MESSAGE | PIPE_REJECT_REMOTE_CLIENTS, 1,
-                         pipe_buffer_size, pipe_buffer_size, 500, nullptr);
-
-  std::cout << "Created pipe" << std::endl;
 
   std::string proc_name;
   if (argc > 1 && common::is_valid_executable_name(argv[1])) {
@@ -142,33 +155,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  bool bRes = ConnectNamedPipe(pipe_handle, nullptr);
-
-  if (!bRes) {
-    DWORD dwErrCode = GetLastError();
-    if (dwErrCode != ERROR_PIPE_CONNECTED) {
-      CloseHandle(pipe_handle);
-      return 1;
-    }
-  }
-
-  std::array<char, pipe_buffer_size> buf{};
-  while (true) {
-    using buf_element = decltype(buf)::value_type;
-    buf.fill('\0');
-
-    DWORD nBytesRead = 0;
-    bRes = ::ReadFile(pipe_handle, buf.data(),
-                      (buf.size() - 1) * sizeof(buf_element), &nBytesRead,
-                      nullptr);
-
-    if (!bRes) {
-      CloseHandle(pipe_handle);
-      return 1;
-    }
-
-    std::string_view sv(buf.data(), nBytesRead);
-  }
+  while (true) {};
 
   return 0;
 }

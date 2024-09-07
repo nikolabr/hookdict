@@ -21,9 +21,9 @@ public:
 
 		MH_STATUS st;
 		const auto report_error = [&]() {
-		  write_to_pipe(g_pipe, MH_StatusToString(st));
-		};
 
+		};
+		
 		st = MH_CreateHook(old_ptr, reinterpret_cast<void*>(new_func_ptr), &trampoline_ptr);
 		if (st != MH_OK) {
 		  report_error();

@@ -12,5 +12,6 @@ target("target")
 	add_deps("fastcorr")
 	
 	add_packages("minhook")
+	add_packages("rpclib")
 
 	add_files("*.cpp")

@@ -12,9 +12,7 @@
 #include <filesystem>
 
 namespace common {
-constexpr static wchar_t hookdict_pipe_name[] = L"\\\\.\\pipe\\hookdict_pipe";
-
-constexpr static uint16_t hookdict_port = 19090;
+constexpr static uint16_t hookdict_port = 18090;
 
 static std::filesystem::path get_module_file_name_w(HMODULE handle) {
   std::array<wchar_t, MAX_PATH> out{};
@@ -46,15 +44,15 @@ static bool is_valid_executable_name(auto &&name) {
 
 template <
     typename T,
-    std::enable_if_t<std::constructible_from<std::u16string, T>, bool> = true>
+    std::enable_if_t<std::constructible_from<std::wstring, T>, bool> = true>
 std::size_t write_stdout_console(T &&msg) {
   HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 
-  const char16_t *buf = msg.c_str();
+  const wchar_t *buf = msg.c_str();
   DWORD len = msg.size();
   DWORD out = 0;
 
-  WriteConsoleW(stdout_handle, reinterpret_cast<const void *>(buf), len, &out,
+  ::WriteConsoleW(stdout_handle, reinterpret_cast<const void *>(buf), len, &out,
                 nullptr);
 
   return out;
@@ -69,7 +67,7 @@ std::size_t write_stdout_console(T &&msg) {
   DWORD len = msg.size();
   DWORD out = 0;
 
-  WriteConsoleA(stdout_handle, reinterpret_cast<const void *>(buf), len, &out,
+  ::WriteConsoleA(stdout_handle, reinterpret_cast<const void *>(buf), len, &out,
                 nullptr);
 
   return out;

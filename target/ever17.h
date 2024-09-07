@@ -3,6 +3,7 @@
 #include "base.h"
 #include "common.h"
 #include "hook_manager.h"
+#include "rpc/client.h"
 
 #include <type_traits>
 
@@ -10,7 +11,7 @@ namespace targets {
   namespace kid {
     class ever17
     {
-      HANDLE m_pipe;
+      rpc::client* m_client;
 
       std::string m_prev;
     public:
@@ -23,7 +24,7 @@ namespace targets {
       
       static constexpr wchar_t s_target_name[] = L"kid::ever17";
 
-      static std::shared_ptr<ever17> try_create(hook_manager& hm, HANDLE pipe);
+      static std::shared_ptr<ever17> try_create(hook_manager& hm, rpc::client& client);
       
       ~ever17();
     private:

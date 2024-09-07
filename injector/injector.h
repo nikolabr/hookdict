@@ -8,6 +8,4 @@
 
 #include "common.h"
 
-#include <Windows.h>
-
 // TODO: プログラムに必要な追加ヘッダーをここで参照します。

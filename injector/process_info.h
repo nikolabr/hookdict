@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-#include <windows.h>
-
 #include "common.h"
 
 struct process_info {

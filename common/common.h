@@ -2,32 +2,17 @@
 
 #pragma once
 
-#include <Windows.h>
+#include <winapifamily.h>
+#include <sdkddkver.h>
 
-#include <intrin.h>
-#include <windef.h>
-#include <winnt.h>
-
-#include <winbase.h>
-
-#include <stringapiset.h>
-#include <winuser.h>
-#include <wingdi.h>
-#include <processthreadsapi.h>
-#include <wincon.h>
+#include <windows.h>
+#include <psapi.h>
 
 #include <array>
 #include <filesystem>
 
-
 namespace common {
-constexpr static wchar_t hookdict_pipe_name[] = L"\\\\.\\pipe\\hookdict_pipe";
-
-constexpr static wchar_t hookdict_shmem[] = L"Global\\HookdictSharedBuffer";
-constexpr std::size_t shmem_buffer_size = 0x1000000;
-
-constexpr static wchar_t hookdict_event[] = L"HookdictSharedEvent";
-constexpr static wchar_t hookdict_semaphore[] = L"HookdictSemaphore";
+    constexpr static wchar_t hookdict_pipe_name[] = L"\\\\.\\pipe\\hookdict_pipe";
 
 static std::filesystem::path get_module_file_name_w(HMODULE handle) {
   std::array<wchar_t, MAX_PATH> out{};

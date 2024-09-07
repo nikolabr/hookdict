@@ -4,9 +4,6 @@
 #include <array>
 #include <iterator>
 
-#include <windows.h>
-#include <psapi.h>
-
 constexpr std::size_t max_process_to_enumerate = 1024;
 
 std::wstring process_info::get_process_name(uint32_t pid) {

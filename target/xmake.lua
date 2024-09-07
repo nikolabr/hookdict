@@ -14,4 +14,3 @@ target("target")
 	add_packages("minhook")
 
 	add_files("*.cpp")
-	

@@ -1,8 +1,12 @@
 target("injector")
 	add_cxxflags("-stdlib=libc++")
+	
 	set_languages("c11", "cxx20")
 
 	add_deps("common")
+
+	add_packages("rpclib")
+	add_packages("boost")
 	
 	set_kind("binary")
 	add_files("*.cpp")

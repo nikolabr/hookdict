@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include <winapifamily.h>
 #include <sdkddkver.h>
+#include <winapifamily.h>
 
 #include <windows.h>
 #include <psapi.h>
@@ -12,7 +12,9 @@
 #include <filesystem>
 
 namespace common {
-    constexpr static wchar_t hookdict_pipe_name[] = L"\\\\.\\pipe\\hookdict_pipe";
+constexpr static wchar_t hookdict_pipe_name[] = L"\\\\.\\pipe\\hookdict_pipe";
+
+constexpr static uint16_t hookdict_port = 19090;
 
 static std::filesystem::path get_module_file_name_w(HMODULE handle) {
   std::array<wchar_t, MAX_PATH> out{};
@@ -52,8 +54,8 @@ std::size_t write_stdout_console(T &&msg) {
   DWORD len = msg.size();
   DWORD out = 0;
 
-  WriteConsoleW(
-      stdout_handle, reinterpret_cast<const void *>(buf), len, &out, nullptr);
+  WriteConsoleW(stdout_handle, reinterpret_cast<const void *>(buf), len, &out,
+                nullptr);
 
   return out;
 }
@@ -67,8 +69,8 @@ std::size_t write_stdout_console(T &&msg) {
   DWORD len = msg.size();
   DWORD out = 0;
 
-  WriteConsoleA(
-      stdout_handle, reinterpret_cast<const void *>(buf), len, &out, nullptr);
+  WriteConsoleA(stdout_handle, reinterpret_cast<const void *>(buf), len, &out,
+                nullptr);
 
   return out;
 }

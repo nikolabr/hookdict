@@ -5,3 +5,8 @@ rpclib/2.3.0
 
 [options]
 boost*:without_stacktrace=True
+boost*:with_outcome=True
+
+[generators]
+CMakeDeps
+CMakeToolchain

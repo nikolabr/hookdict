@@ -44,7 +44,7 @@ static bool is_valid_executable_name(auto &&name) {
 
 template <
     typename T,
-    std::enable_if_t<std::constructible_from<std::wstring, T>, bool> = true>
+    std::enable_if_t<std::is_constructible<std::wstring, T>::value, bool> = true>
 std::size_t write_stdout_console(T &&msg) {
   HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -58,7 +58,7 @@ std::size_t write_stdout_console(T &&msg) {
   return out;
 }
 
-template <typename T, std::enable_if_t<std::constructible_from<std::string, T>,
+template <typename T, std::enable_if_t<std::is_constructible<std::string, T>::value,
                                        bool> = true>
 std::size_t write_stdout_console(T &&msg) {
   HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);

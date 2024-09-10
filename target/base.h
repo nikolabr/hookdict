@@ -5,7 +5,6 @@
 
 #include "fastcorr.h"
 
-#include <format>
 #include <list>
 #include <string>
 #include <vector>

@@ -6,8 +6,6 @@ A WIP tool for making looking up text inside of untranslated visual novels easie
 
 ## Building
 
-This project is built using xmake: https://xmake.io/
-
 ### Linux
 
 Create a conan profile for cross-compiling:
@@ -30,10 +28,14 @@ LD=i686-w64-mingw32-ld
 ```
 
 Install the required dependencies with:
-`conan install . --build=missing --profile=mingw --output-folder=build`
+```
+conan install . --build=missing --profile=mingw --output-folder=build
+```
 
 Configure and build with CMake:
-`cmake --preset conan-debug`
-`cmake --build build`
+```
+cmake --preset conan-debug
+cmake --build build
+```
 
 ### Windows

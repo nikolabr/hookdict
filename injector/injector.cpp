@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
                  [](char c) { return static_cast<char>(std::toupper(c)); });
 
   std::vector procs = process_info::enum_processes();
-
+  
   auto it = std::find_if(
       procs.begin(), procs.end(), [&](const process_info &proc_info) {
         auto filename = proc_info.m_module_name.filename().string();

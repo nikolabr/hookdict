@@ -365,3 +365,4 @@ FodyWeavers.xsd
 build/
 .xmake
 compile_commands.json
+CMakeUserPresets.json

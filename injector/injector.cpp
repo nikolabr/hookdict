@@ -17,8 +17,6 @@
 
 namespace outcome = BOOST_OUTCOME_V2_NAMESPACE;
 
-constexpr auto pipe_buffer_size = 4096;
-
 HANDLE open_process_by_pid(uint32_t pid) {
   auto hr = OpenProcess(PROCESS_ALL_ACCESS, false, pid);
   return hr;

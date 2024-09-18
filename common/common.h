@@ -31,7 +31,7 @@ static std::filesystem::path get_module_file_name_w(H &&handle) {
   return get_module_file_name_w(handle.get());
 }
 
-static bool is_valid_executable_name(std::wstring &&name) {
+static bool is_valid_executable_name(auto &&name) {
   std::filesystem::path p(name);
   if (!p.has_extension()) {
     return false;

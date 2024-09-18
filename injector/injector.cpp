@@ -74,7 +74,7 @@ outcome::result<void> hook_to_process(DWORD dwPID,
   if (hThread) {
     WaitForSingleObject(hThread, 500);
   }
-  
+
   VirtualFreeEx(hProcess, lpRemoteString, 0, MEM_RELEASE);
 
   CloseHandle(hProcess);
@@ -82,18 +82,19 @@ outcome::result<void> hook_to_process(DWORD dwPID,
   return outcome::success();
 }
 
-void on_target_msg(std::string const& text, uint32_t codepage) {
+void on_target_msg(std::string const &text, uint32_t codepage) {
   if (codepage != 932) {
     std::cerr << "Target codepage is not Shift-JIS" << std::endl;
   }
-  std::size_t len = ::MultiByteToWideChar(codepage, 0, text.c_str(), text.size(), nullptr, 0);
+  std::size_t len =
+      ::MultiByteToWideChar(codepage, 0, text.c_str(), text.size(), nullptr, 0);
 
   std::wstring out(len, L'\0');
-  DWORD res = ::MultiByteToWideChar(codepage, 0, text.c_str(), text.size(), out.data(), out.size());
+  DWORD res = ::MultiByteToWideChar(codepage, 0, text.c_str(), text.size(),
+                                    out.data(), out.size());
   if (res == 0) {
     std::cerr << "Multibyte conversion error" << std::endl;
-  }
-  else {
+  } else {
     common::write_stdout_console(out);
   }
 }
@@ -104,11 +105,11 @@ int main(int argc, char *argv[]) {
   SetConsoleCP(65001);
 
   rpc::server server("127.0.0.1", common::hookdict_port);
-  
+
   server.bind("target_msg", on_target_msg);
 
   server.async_run();
-  
+
   std::filesystem::path dllPath =
       std::filesystem::current_path() / "libtarget.dll";
   dllPath = std::filesystem::absolute(dllPath);
@@ -146,14 +147,16 @@ int main(int argc, char *argv[]) {
   if (it != procs.end()) {
     auto result = hook_to_process(it->m_pid, dllPath);
     if (!result) {
-      std::cerr << "Error in hooking process: " << result.as_failure().error() << std::endl;
+      std::cerr << "Error in hooking process: " << result.as_failure().error()
+                << std::endl;
     }
   } else {
     std::cerr << "Could not find process:" << proc_name << std::endl;
     return 1;
   }
 
-  while (true) {};
+  while (true) {
+  };
 
   return 0;
 }

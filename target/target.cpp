@@ -4,21 +4,29 @@
 #include "common.h"
 #include "ever17.h"
 #include "hook_manager.h"
+#include "msg.h"
 
 #include <any>
-#include <exception>
 #include <utility>
+
+#include <boost/interprocess/mapped_region.hpp>
+#include <boost/interprocess/windows_shared_memory.hpp>
 
 static hook_manager g_hm;
 static std::any g_target;
 
 template <typename T>
-using target_factory_t = std::shared_ptr<T> (*)(hook_manager&);
+using target_factory_t = std::shared_ptr<T> (*)(hook_manager&, boost::interprocess::mapped_region&&);
 
 template <typename T>
 static std::shared_ptr<T>
 try_to_create_target(target_factory_t<T> target_factory) {
-  return target_factory(g_hm);
+  using namespace boost::interprocess;
+
+  windows_shared_memory shm(open_only, common::shared_memory_name, read_write);
+  mapped_region region(shm, read_write);
+  
+  return target_factory(g_hm, std::move(region));
 }
 
 template <typename T>

@@ -4,6 +4,7 @@
 #include "common.h"
 #include "hook_manager.h"
 
+#include <boost/interprocess/mapped_region.hpp>
 #include <type_traits>
 
 namespace targets {
@@ -11,6 +12,10 @@ namespace targets {
     class ever17
     {
       std::string m_prev;
+      
+      boost::interprocess::mapped_region m_region;
+
+      common::shared_memory* get_shm_ptr();
     public:
       struct textoutw_hook : hooks::hook_base<decltype(&TextOutA), HDC, int, int, LPCSTR, int> {
 	using hook_base::hook_base;
@@ -21,7 +26,7 @@ namespace targets {
       
       static constexpr wchar_t s_target_name[] = L"kid::ever17";
 
-      static std::shared_ptr<ever17> try_create(hook_manager& hm);
+      static std::shared_ptr<ever17> try_create(hook_manager& hm, boost::interprocess::mapped_region&& region);
       
       ~ever17();
     private:

@@ -1,16 +1,14 @@
 #include "base.h"
-#include "common.h"
 
-#include <minwindef.h>
-#include <libloaderapi.h>
+#include "msg.h"
 
-HANDLE g_pipe;
+#include <boost/interprocess/sync/interprocess_mutex.hpp>
+#include <boost/interprocess/sync/scoped_lock.hpp>
 
-glyph_info::glyph_info(unsigned int char_val, unsigned char* ptr, std::size_t n, unsigned int x, unsigned int y)
-{
-    m_val = char_val;
-    m_buffer = std::vector<unsigned char>(n);
-    std::copy(ptr, ptr + n, std::back_inserter(m_buffer));
-    m_x = x;
-    m_y = y;
+void send_message(common::shared_memory* ptr, common::message_t msg) {
+  using namespace boost::interprocess;
+  
+  scoped_lock<interprocess_mutex> lk(ptr->m_mut);
+  ptr->m_buf.push_back(msg);
+  ptr->m_cv.notify_one();
 }

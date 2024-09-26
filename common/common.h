@@ -2,13 +2,10 @@
 
 #pragma once
 
-#include <sdkddkver.h>
-#include <string>
-#include <winapifamily.h>
-
 #include <windows.h>
 #include <psapi.h>
 
+#include <string>
 #include <array>
 #include <filesystem>
 

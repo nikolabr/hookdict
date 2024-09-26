@@ -1,23 +1,28 @@
 ﻿#include "injector.h"
 
-#include <cstddef>
+#include "common.h"
+#include "msg.h"
+#include "process_info.h"
+#include "server.h"
+
 #include <cstdint>
-#include <cwchar>
 
 #include <filesystem>
+#include <processenv.h>
 #include <string>
 #include <system_error>
+
+#include <boost/log/trivial.hpp>
 
 #include <boost/outcome.hpp>
 #include <boost/outcome/outcome.hpp>
 
 #include <boost/filesystem.hpp>
 
-#include <boost/winapi/character_code_conversion.hpp>
-#include "common.h"
-#include "process_info.h"
-
-#include <boost/log/trivial.hpp>
+#include <boost/interprocess/windows_shared_memory.hpp>
+#include <boost/interprocess/mapped_region.hpp>
+#include <boost/interprocess/interprocess_fwd.hpp>
+#include <windows.h>
 
 namespace outcome = BOOST_OUTCOME_V2_NAMESPACE;
 
@@ -86,6 +91,14 @@ outcome::result<void> hook_to_process(DWORD dwPID,
   return outcome::success();
 }
 
+boost::interprocess::mapped_region create_shm()
+{
+  using namespace boost::interprocess;
+  
+  windows_shared_memory shm(create_only, common::shared_memory_name, read_write, sizeof(common::shared_memory));
+  return mapped_region(shm, read_write);
+}
+
 int main(int argc, char *argv[]) {
   // Set UTF-16 console
   SetConsoleOutputCP(65001);
@@ -120,7 +133,7 @@ int main(int argc, char *argv[]) {
       procs.begin(), procs.end(), [&](const process_info &proc_info) {
         auto filename = proc_info.m_module_name.filename().string();
         std::transform(
-            filename.begin(), filename.end(), filename.begin(),
+		       filename.begin(), filename.end(), filename.begin(),
             [](char c) { return static_cast<char>(std::toupper(c)); });
 
         return !filename.empty() && filename == proc_name;
@@ -138,9 +151,15 @@ int main(int argc, char *argv[]) {
     BOOST_LOG_TRIVIAL(fatal) << "Could not find process: " << proc_name;
     return 1;
   }
+  
+  auto region = create_shm();
 
-  while (true) {
-  };
+  common::shared_memory* shm_ptr = new (region.get_address()) common::shared_memory;
+  
+  auto r = run_server(shm_ptr, {});
+  if (!r.has_value()) {
+    BOOST_LOG_TRIVIAL(error) << r.as_failure().error();
+  }
 
   return 0;
 }

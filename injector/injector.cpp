@@ -4,16 +4,20 @@
 #include <cstdint>
 #include <cwchar>
 
-#include <rpc/server.h>
+#include <filesystem>
 #include <string>
 #include <system_error>
 
 #include <boost/outcome.hpp>
 #include <boost/outcome/outcome.hpp>
 
-#include "boost/winapi/character_code_conversion.hpp"
+#include <boost/filesystem.hpp>
+
+#include <boost/winapi/character_code_conversion.hpp>
 #include "common.h"
 #include "process_info.h"
+
+#include <boost/log/trivial.hpp>
 
 namespace outcome = BOOST_OUTCOME_V2_NAMESPACE;
 
@@ -67,7 +71,7 @@ outcome::result<void> hook_to_process(DWORD dwPID,
         std::error_code(::GetLastError(), std::system_category()));
   }
 
-  HANDLE hThread = CreateRemoteThread(hProcess, nullptr, 0,
+  HANDLE hThread = ::CreateRemoteThread(hProcess, nullptr, 0,
                                       (LPTHREAD_START_ROUTINE)lpLoadLibraryW,
                                       lpRemoteString, 0, nullptr);
 
@@ -82,40 +86,18 @@ outcome::result<void> hook_to_process(DWORD dwPID,
   return outcome::success();
 }
 
-void on_target_msg(std::string const &text, uint32_t codepage) {
-  if (codepage != 932) {
-    std::cerr << "Target codepage is not Shift-JIS" << std::endl;
-  }
-  std::size_t len =
-      ::MultiByteToWideChar(codepage, 0, text.c_str(), text.size(), nullptr, 0);
-
-  std::wstring out(len, L'\0');
-  DWORD res = ::MultiByteToWideChar(codepage, 0, text.c_str(), text.size(),
-                                    out.data(), out.size());
-  if (res == 0) {
-    std::cerr << "Multibyte conversion error" << std::endl;
-  } else {
-    common::write_stdout_console(out);
-  }
-}
-
 int main(int argc, char *argv[]) {
   // Set UTF-16 console
   SetConsoleOutputCP(65001);
   SetConsoleCP(65001);
 
-  rpc::server server("127.0.0.1", common::hookdict_port);
-
-  server.bind("target_msg", on_target_msg);
-
-  server.async_run();
-
   std::filesystem::path dllPath =
-      std::filesystem::current_path() / "libtarget.dll";
-  dllPath = std::filesystem::absolute(dllPath);
+    std::filesystem::weakly_canonical(std::filesystem::path(argv[0]))
+    .parent_path() /
+      "../target/libhookdict_target.dll";
 
   if (!std::filesystem::exists(dllPath)) {
-    std::cerr << "Target DLL does not exist";
+    BOOST_LOG_TRIVIAL(fatal) << "Target DLL does not exist";
     return 1;
   }
 
@@ -125,7 +107,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (proc_name.empty()) {
-    std::cerr << "Executable name invalid";
+    BOOST_LOG_TRIVIAL(fatal) << "Executable name invalid";
     return 1;
   }
 
@@ -133,7 +115,7 @@ int main(int argc, char *argv[]) {
                  [](char c) { return static_cast<char>(std::toupper(c)); });
 
   std::vector procs = process_info::enum_processes();
-  
+
   auto it = std::find_if(
       procs.begin(), procs.end(), [&](const process_info &proc_info) {
         auto filename = proc_info.m_module_name.filename().string();
@@ -150,8 +132,10 @@ int main(int argc, char *argv[]) {
       std::cerr << "Error in hooking process: " << result.as_failure().error()
                 << std::endl;
     }
+
   } else {
-    std::cerr << "Could not find process:" << proc_name << std::endl;
+    // std::cerr << "Could not find process:" << proc_name << std::endl;
+    BOOST_LOG_TRIVIAL(fatal) << "Could not find process: " << proc_name;
     return 1;
   }
 

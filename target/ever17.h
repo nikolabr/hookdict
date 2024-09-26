@@ -3,7 +3,6 @@
 #include "base.h"
 #include "common.h"
 #include "hook_manager.h"
-#include "rpc/client.h"
 
 #include <type_traits>
 
@@ -11,8 +10,6 @@ namespace targets {
   namespace kid {
     class ever17
     {
-      rpc::client* m_client;
-
       std::string m_prev;
     public:
       struct textoutw_hook : hooks::hook_base<decltype(&TextOutA), HDC, int, int, LPCSTR, int> {
@@ -24,7 +21,7 @@ namespace targets {
       
       static constexpr wchar_t s_target_name[] = L"kid::ever17";
 
-      static std::shared_ptr<ever17> try_create(hook_manager& hm, rpc::client& client);
+      static std::shared_ptr<ever17> try_create(hook_manager& hm);
       
       ~ever17();
     private:

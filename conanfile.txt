@@ -1,12 +1,14 @@
 [requires]
 boost/1.84.0
 minhook/1.3.3.cci.20240629
-rpclib/2.3.0
 
 [options]
 boost*:without_stacktrace=True
 boost*:with_outcome=True
+boost*:with_thread=True
+boost*:with_log=True
 
 [generators]
 CMakeDeps
 CMakeToolchain
+

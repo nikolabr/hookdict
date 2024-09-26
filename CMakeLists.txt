@@ -6,7 +6,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(Boost)
 find_package(minhook)
-find_package(rpclib)
 
 add_subdirectory("common")
 add_subdirectory("fastcorr")

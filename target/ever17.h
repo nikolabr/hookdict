@@ -14,8 +14,6 @@ namespace targets {
       std::string m_prev;
       
       boost::interprocess::mapped_region m_region;
-
-      common::shared_memory* get_shm_ptr();
     public:
       struct textoutw_hook : hooks::hook_base<decltype(&TextOutA), HDC, int, int, LPCSTR, int> {
 	using hook_base::hook_base;
@@ -23,8 +21,11 @@ namespace targets {
 	
 	static return_t WINAPI fake_call(HDC hdc, int x, int y, const char *lpString, int c);
       };
+
+      common::shared_memory* get_shm_ptr();
       
-      static constexpr wchar_t s_target_name[] = L"kid::ever17";
+      HBITMAP m_hbm = NULL;
+      std::atomic<HWND> m_main_wnd = NULL;
 
       static std::shared_ptr<ever17> try_create(hook_manager& hm, boost::interprocess::mapped_region&& region);
       

@@ -155,6 +155,7 @@ int main(int argc, char *argv[]) {
   auto region = create_shm();
 
   common::shared_memory* shm_ptr = new (region.get_address()) common::shared_memory;
+  std::fill(shm_ptr->m_img_buf.m_buf.begin(), shm_ptr->m_img_buf.m_buf.end(), 0);
   
   auto r = run_server(shm_ptr, {});
   if (!r.has_value()) {

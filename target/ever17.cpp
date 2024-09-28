@@ -36,7 +36,9 @@ targets::kid::ever17::try_create(hook_manager &hm, boost::interprocess::mapped_r
   ptr->m_textoutw_hook.enable(hm, textoutw_hook::fake_call);
 
   auto* shm_ptr = ptr->get_shm_ptr();
-  send_message(shm_ptr, common::target_connected_message_t{});
+  send_message(shm_ptr, common::target_connected_message_t{
+      .m_window_name{"Ever17 - the out of infinity -  Premium Edition DVD"}
+    });
 
   return ptr;
 }

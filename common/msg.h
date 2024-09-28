@@ -15,6 +15,7 @@ namespace common {
   static const char* shared_memory_name = "hookdict_shared_memory";
 
   struct target_connected_message_t {
+    boost::static_string<128> m_window_name;
   };
 
   struct target_generic_message_t {
@@ -29,6 +30,10 @@ namespace common {
     target_close_message_t,
     target_generic_message_t
     >;
+
+  struct shared_image_buf {
+    std::array<uint8_t, 1024 * 1024 * 8> m_buf{};
+  };
   
   struct shared_memory {
     static constexpr std::size_t buf_capacity = 512;

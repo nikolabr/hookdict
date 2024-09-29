@@ -39,12 +39,7 @@ outcome::result<void> hook_to_process(DWORD dwPID,
 
   if (hProcess == NULL) {
     DWORD dwErrCode = GetLastError();
-    if (dwErrCode == ERROR_ACCESS_DENIED) {
-      // TODO : Elevate injector if target is elevated
-    } else {
-      return outcome::failure(
-          std::error_code(dwErrCode, std::system_category()));
-    }
+    return outcome::failure(std::error_code(dwErrCode, std::system_category()));
   }
 
   size_t nLen = wcslen(dllName.c_str()) * sizeof(WCHAR);
@@ -99,17 +94,31 @@ boost::interprocess::mapped_region create_shm()
   return mapped_region(shm, read_write);
 }
 
+static const std::array<std::filesystem::path, 3> possible_dll_paths = {
+    "../target/libhookdict_target.dll",
+
+    "../../target/Debug/hookdict_target.dll",
+    "../../target/Release/hookdict_target.dll"
+};
+
+std::filesystem::path find_target_dll(const char* arg) {
+    for (const auto& path : possible_dll_paths) {
+        std::filesystem::path dllPath = std::filesystem::weakly_canonical(std::filesystem::path(arg)).parent_path() / path;
+        if (std::filesystem::exists(dllPath)) {
+            return dllPath;
+        }
+    }
+    return "";
+}
+
 int main(int argc, char *argv[]) {
   // Set UTF-16 console
   SetConsoleOutputCP(65001);
   SetConsoleCP(65001);
 
-  std::filesystem::path dllPath =
-    std::filesystem::weakly_canonical(std::filesystem::path(argv[0]))
-    .parent_path() /
-      "../target/libhookdict_target.dll";
+  auto dllPath = find_target_dll(argv[0]);
 
-  if (!std::filesystem::exists(dllPath)) {
+  if (dllPath.empty() || !std::filesystem::exists(dllPath)) {
     BOOST_LOG_TRIVIAL(fatal) << "Target DLL does not exist";
     return 1;
   }

@@ -65,6 +65,7 @@ struct message_handler {
       msg.m_height << " " <<
       msg.m_lines;
     
+    /*
     std::ostringstream ss;
     ss << "screenshot" << m_counter << ".bmp";
     std::ofstream ofs(ss.str(), std::ios::binary | std::ios::trunc);
@@ -73,10 +74,11 @@ struct message_handler {
     m_ptr->m_img_buf.m_sem.wait();
     ofs.write(m_ptr->m_img_buf.m_buf.data(), m_ptr->m_img_buf.m_buf.size());
     m_ptr->m_img_buf.m_sem.post();
+    */
   }
 };
 
-static outcome::result<void> log_file_writer_thread(std::stop_token st) {
+static void log_file_writer_thread(std::stop_token st) {
   HANDLE log_file = ::CreateFile("target.log", GENERIC_READ | GENERIC_WRITE,
                                  FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
                                  CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -97,7 +99,7 @@ static outcome::result<void> log_file_writer_thread(std::stop_token st) {
   }
 
   ::CloseHandle(log_file);
-  return outcome::success();
+  return;
 }
 
 outcome::result<void> run_server(common::shared_memory *shm,

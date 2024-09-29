@@ -79,13 +79,21 @@ ever17::bitblt_hook::fake_call(HDC hdc, int x, int y, int cx, int cy,
 
   RECT rect;
   ::GetClientRect(g_ever17->m_main_wnd, &rect);
-
+  
   DWORD width = rect.right - rect.left;
   DWORD height = rect.bottom - rect.top;
-  
-  Gdiplus::Bitmap *bmp = new Gdiplus::Bitmap(::CreateCompatibleBitmap(hdc, width, height), 0);
-  Gdiplus::Graphics bmpGraphics(bmp);
 
+  /*
+    >You are responsible for deleting the GDI bitmap and the GDI
+     palette. However, you should not delete the GDI bitmap or the GDI
+     palette until after the GDI+ Bitmap::Bitmap object is deleted or
+     goes out of scope.
+   */
+  HBITMAP hbm = ::CreateCompatibleBitmap(hdc, width, height);
+  
+  Gdiplus::Bitmap *bmp = new Gdiplus::Bitmap(hbm, 0);
+  Gdiplus::Graphics bmpGraphics(bmp);
+  
   HDC hBmpDC = bmpGraphics.GetHDC();
   DWORD lines = g_ever17->m_bitblt_hook.m_old_ptr(hBmpDC, 0, 0, width, height,
                                                   hdc, 0, 0, SRCCOPY);
@@ -100,8 +108,10 @@ ever17::bitblt_hook::fake_call(HDC hdc, int x, int y, int cx, int cy,
       .m_lines{lines}
     });
 
-  // ::ReleaseDC(NULL, hBmpDC);
+  ::ReleaseDC(NULL, hBmpDC);
+  
   delete bmp;
+  ::DeleteObject(hbm);
   
   return res;
 }

@@ -35,8 +35,10 @@ public:
 
   common::shared_memory *get_shm_ptr();
 
-  HBITMAP m_hbm = NULL;
   std::atomic<HWND> m_main_wnd = NULL;
+  
+  std::unique_ptr<Gdiplus::Bitmap> m_bitmap;
+  std::unique_ptr<Gdiplus::Graphics> m_bmp_graphics;
 
   static std::shared_ptr<ever17>
   try_create(hook_manager &hm, boost::interprocess::mapped_region &&region);

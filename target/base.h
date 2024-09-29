@@ -4,6 +4,8 @@
 #include "hooks.h"
 #include "msg.h"
 
+#include <gdiplus.h>
+
 #include <boost/outcome.hpp>
 #include <boost/outcome/outcome.hpp>
 
@@ -18,3 +20,5 @@ outcome::result<void> write_dc_to_file(HDC hdc, DWORD default_size, std::filesys
 static void write_msg(wchar_t const *msg) {
   ::MessageBoxW(nullptr, msg, L"Target message", MB_OK);
 }
+
+HRESULT GetEncoderClsid(const std::wstring &format, GUID *pGuid);

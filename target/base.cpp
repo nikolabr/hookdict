@@ -5,6 +5,8 @@
 #include <boost/interprocess/sync/interprocess_mutex.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 
+#include <gdiplus.h>
+
 #include <fstream>
 #include <wingdi.h>
 
@@ -84,4 +86,51 @@ void send_message(common::shared_memory* ptr, common::message_t msg) {
   scoped_lock<interprocess_mutex> lk(ptr->m_mut);
   ptr->m_buf.push_back(msg);
   ptr->m_cv.notify_one();
+}
+
+HRESULT GetEncoderClsid(const std::wstring &format, GUID *pGuid) {
+  HRESULT hr = S_OK;
+  UINT nEncoders = 0; // number of image encoders
+  UINT nSize = 0;     // size of the image encoder array in bytes
+  std::vector<BYTE> spData;
+  Gdiplus::ImageCodecInfo *pImageCodecInfo = NULL;
+  Gdiplus::Status status;
+  bool found = false;
+
+  if (format.empty() || !pGuid) {
+    hr = E_INVALIDARG;
+  }
+
+  if (SUCCEEDED(hr)) {
+    *pGuid = GUID_NULL;
+    status = Gdiplus::GetImageEncodersSize(&nEncoders, &nSize);
+
+    if ((status != Gdiplus::Ok) || (nSize == 0)) {
+      hr = E_FAIL;
+    }
+  }
+
+  if (SUCCEEDED(hr)) {
+
+    spData.resize(nSize);
+    pImageCodecInfo = (Gdiplus::ImageCodecInfo *)&spData.front();
+    status = Gdiplus::GetImageEncoders(nEncoders, nSize, pImageCodecInfo);
+
+    if (status != Gdiplus::Ok) {
+      hr = E_FAIL;
+    }
+  }
+
+  if (SUCCEEDED(hr)) {
+    for (UINT j = 0; j < nEncoders && !found; j++) {
+      if (pImageCodecInfo[j].MimeType == format) {
+        *pGuid = pImageCodecInfo[j].Clsid;
+        found = true;
+      }
+    }
+
+    hr = found ? S_OK : E_FAIL;
+  }
+
+  return hr;
 }

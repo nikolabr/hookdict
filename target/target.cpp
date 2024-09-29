@@ -6,6 +6,8 @@
 #include "hook_manager.h"
 #include "msg.h"
 
+#include <gdiplus.h>
+
 #include <any>
 #include <utility>
 
@@ -14,6 +16,8 @@
 
 static hook_manager g_hm;
 static std::any g_target;
+
+static ULONG_PTR gdiplusToken;
 
 template <typename T>
 using target_factory_t = std::shared_ptr<T> (*)(hook_manager&, boost::interprocess::mapped_region&&);
@@ -53,6 +57,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call,
     write_msg(L"Target connected");
     
     std::filesystem::path module_path = common::get_module_file_name_w();
+
+    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+    Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
     
     g_hm.init();
     
@@ -67,6 +74,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call,
   } else if (ul_reason_for_call == DLL_PROCESS_DETACH) {
     g_target.reset();
     g_hm.uninit();
+    
+    Gdiplus::GdiplusShutdown(gdiplusToken);
   }
   return TRUE;
 }

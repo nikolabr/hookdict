@@ -21,4 +21,4 @@ static void write_msg(wchar_t const *msg) {
   ::MessageBoxW(nullptr, msg, L"Target message", MB_OK);
 }
 
-HRESULT GetEncoderClsid(const std::wstring &format, GUID *pGuid);
+IStream* get_img_buf_stream(common::shared_memory* shm_ptr);

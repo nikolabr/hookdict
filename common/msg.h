@@ -26,21 +26,31 @@ namespace common {
 
   struct target_close_message_t {};
 
-  struct bitmap_update_message_t {
-    long int m_width;
-    long int m_height;
-    long unsigned int m_lines;
+  struct bitblt_hook_message_t {
+    struct {
+      HDC hdc;
+      int x;
+      int y;
+      int cx;
+      int cy;
+      HDC hdcSrc;
+      int x1;
+      int y1;
+      DWORD rop;
+    } m_args;
+    
+    std::string m_src_dc_text;
   };
 
   using message_t = std::variant<
     target_connected_message_t,
     target_close_message_t,
     target_generic_message_t,
-    bitmap_update_message_t
+    bitblt_hook_message_t
     >;
 
   struct shared_image_buf {
-    std::array<char, 1024 * 1024 * 8> m_buf;
+    std::array<unsigned char, 1024 * 1024 * 8> m_buf;
     
     boost::interprocess::interprocess_semaphore m_sem{1};
   };

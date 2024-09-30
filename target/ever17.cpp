@@ -17,8 +17,6 @@ using namespace targets::kid;
 
 static std::shared_ptr<ever17> g_ever17 = nullptr;
 
-static std::atomic<unsigned int> counter = 0;
-
 common::shared_memory *targets::kid::ever17::get_shm_ptr() {
   void *p = m_region.get_address();
   return static_cast<common::shared_memory *>(p);
@@ -66,6 +64,8 @@ ever17::textoutw_hook::return_t WINAPI ever17::textoutw_hook::fake_call(
   send_message(shm_ptr, common::target_generic_message_t{.m_text{lpString},
                                                          .m_cp{codepage}});
 
+  g_ever17->registered_text_dcs.emplace(hdc, std::string(lpString, c));
+
   return g_ever17->m_textoutw_hook.m_old_ptr(hdc, x, y, lpString, c);
 }
 
@@ -77,42 +77,56 @@ ever17::bitblt_hook::fake_call(HDC hdc, int x, int y, int cx, int cy,
       g_ever17->m_bitblt_hook.m_old_ptr(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);
   auto *shm_ptr = g_ever17->get_shm_ptr();
 
-  RECT rect;
-  ::GetClientRect(g_ever17->m_main_wnd, &rect);
-  
-  DWORD width = rect.right - rect.left;
-  DWORD height = rect.bottom - rect.top;
+  std::string dc_text;
 
   /*
-    >You are responsible for deleting the GDI bitmap and the GDI
-     palette. However, you should not delete the GDI bitmap or the GDI
-     palette until after the GDI+ Bitmap::Bitmap object is deleted or
-     goes out of scope.
+    Send hook call only if DC is known to be a text DC
    */
-  HBITMAP hbm = ::CreateCompatibleBitmap(hdc, width, height);
-  
-  Gdiplus::Bitmap *bmp = new Gdiplus::Bitmap(hbm, 0);
-  Gdiplus::Graphics bmpGraphics(bmp);
-  
-  HDC hBmpDC = bmpGraphics.GetHDC();
-  DWORD lines = g_ever17->m_bitblt_hook.m_old_ptr(hBmpDC, 0, 0, width, height,
-                                                  hdc, 0, 0, SRCCOPY);
+  if (g_ever17->registered_text_dcs.contains(hdc)) {
+    g_ever17->registered_text_dcs.visit(hdc, [&](auto& s) {
+      dc_text = s.second;
+    });
+    
+    RECT rect;
+    ::GetClientRect(g_ever17->m_main_wnd, &rect);
 
-  CLSID clsid;
-  ::CLSIDFromString(L"{557cf400-1a04-11d3-9a73-0000f81ef32e}", &clsid);
-  bmp->Save(L"image.bmp", &clsid, nullptr);
+    DWORD width = rect.right - rect.left;
+    DWORD height = rect.bottom - rect.top;
 
-  send_message(shm_ptr, common::bitmap_update_message_t{
-      .m_width{(long)width},
-      .m_height{(long)height},
-      .m_lines{lines}
+    /*
+      >You are responsible for deleting the GDI bitmap and the GDI
+      palette. However, you should not delete the GDI bitmap or the GDI
+      palette until after the GDI+ Bitmap::Bitmap object is deleted or
+      goes out of scope.
+    */
+    HBITMAP hbm = ::CreateCompatibleBitmap(hdc, width, height);
+
+    Gdiplus::Bitmap *bmp = new Gdiplus::Bitmap(hbm, 0);
+    Gdiplus::Graphics bmpGraphics(bmp);
+
+    HDC hBmpDC = bmpGraphics.GetHDC();
+    DWORD lines = g_ever17->m_bitblt_hook.m_old_ptr(hBmpDC, 0, 0, width, height,
+                                                    hdc, 0, 0, SRCCOPY);
+
+    CLSID clsid;
+    ::CLSIDFromString(L"{557cf400-1a04-11d3-9a73-0000f81ef32e}", &clsid);
+
+    IStream *stream = get_img_buf_stream(shm_ptr);
+    bmp->Save(stream, &clsid, nullptr);
+
+    ::ReleaseDC(NULL, hBmpDC);
+
+    delete bmp;
+    delete stream;
+    ::DeleteObject(hbm);
+  }
+
+  
+  send_message(shm_ptr, common::bitblt_hook_message_t {
+      .m_args{hdc, x, y, cx, cy, hdcSrc, x1, y1, rop},
+      .m_src_dc_text{dc_text}
     });
 
-  ::ReleaseDC(NULL, hBmpDC);
-  
-  delete bmp;
-  ::DeleteObject(hbm);
-  
   return res;
 }
 

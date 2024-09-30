@@ -1,4 +1,4 @@
-#include "server.h"
+ #include "server.h"
 #include "common.h"
 #include "msg.h"
 
@@ -15,7 +15,7 @@
 
 static boost::lockfree::queue<wchar_t> text_queue(4096);
 
-outcome::result<std::wstring> on_target_msg(auto const &text,
+outcome::result<std::wstring> cp932_to_utf16(auto const &text,
                                             uint32_t codepage) {
   if (codepage != 932) {
     std::cerr << "Target codepage is not Shift-JIS" << std::endl;
@@ -46,7 +46,7 @@ struct message_handler {
 
   auto operator()(common::target_generic_message_t const &msg) const {
     BOOST_LOG_TRIVIAL(debug) << "Received generic message";
-    auto wstr = on_target_msg(msg.m_text, msg.m_cp);
+    auto wstr = cp932_to_utf16(msg.m_text, msg.m_cp);
     if (wstr.has_value()) {
       for (const wchar_t c : wstr.value()) {
         text_queue.push(c);
@@ -59,12 +59,11 @@ struct message_handler {
     throw std::runtime_error("Target closed");
   }
 
-  auto operator()(common::bitmap_update_message_t const& msg) {
-    BOOST_LOG_TRIVIAL(info) << "Bitmap updated " <<
-      msg.m_width << " " <<
-      msg.m_height << " " <<
-      msg.m_lines;
-    
+  auto operator()(common::bitblt_hook_message_t const& msg) {
+    if (!msg.m_src_dc_text.empty()) {
+      auto wstr = cp932_to_utf16(msg.m_src_dc_text, 932);
+      
+    }
     /*
     std::ostringstream ss;
     ss << "screenshot" << m_counter << ".bmp";

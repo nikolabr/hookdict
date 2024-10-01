@@ -20,7 +20,5 @@ void send_message(common::shared_memory* ptr, common::message_t msg) {
 }
 
 IStream* get_img_buf_stream(common::shared_memory* shm_ptr) {
-  auto& img_buf = shm_ptr->m_img_buf;
-
-  return ::SHCreateMemStream(img_buf.m_buf.data(), img_buf.m_buf.size());
+  return ::SHCreateMemStream(shm_ptr->m_img_buf.m_buf.data(), 1024 * 64);
 }

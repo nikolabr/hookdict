@@ -1,9 +1,11 @@
- #include "server.h"
+#include "server.h"
 #include "common.h"
 #include "msg.h"
 
 #include <fstream>
 #include <thread>
+#include <vector>
+#include <chrono>
 
 #include <boost/log/trivial.hpp>
 
@@ -59,22 +61,6 @@ struct message_handler {
     throw std::runtime_error("Target closed");
   }
 
-  auto operator()(common::bitblt_hook_message_t const& msg) {
-    if (!msg.m_src_dc_text.empty()) {
-      auto wstr = cp932_to_utf16(msg.m_src_dc_text, 932);
-      
-    }
-    /*
-    std::ostringstream ss;
-    ss << "screenshot" << m_counter << ".bmp";
-    std::ofstream ofs(ss.str(), std::ios::binary | std::ios::trunc);
-    m_counter++;
-    
-    m_ptr->m_img_buf.m_sem.wait();
-    ofs.write(m_ptr->m_img_buf.m_buf.data(), m_ptr->m_img_buf.m_buf.size());
-    m_ptr->m_img_buf.m_sem.post();
-    */
-  }
 };
 
 static void log_file_writer_thread(std::stop_token st) {
@@ -101,6 +87,30 @@ static void log_file_writer_thread(std::stop_token st) {
   return;
 }
 
+static void image_buf_reader_thread(std::stop_token st, common::shared_image_buf* buf_ptr) {
+  int counter = 0;
+  
+  std::vector<unsigned char> sib;
+  
+  while (!st.stop_requested()) {
+    while(!buf_ptr->m_sem.try_wait()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    };
+    
+    BOOST_LOG_TRIVIAL(debug) << "Img buf update";
+    sib = std::vector(buf_ptr->m_buf.begin(), buf_ptr->m_buf.end());
+
+    buf_ptr->m_sem.post();
+    
+    std::ostringstream ss;
+    ss << "image" << counter << ".bmp";
+    counter++;
+    
+    std::ofstream fs(ss.str(), std::ios::binary | std::ios::trunc);
+    fs.write(reinterpret_cast<char*>(sib.data()), sib.size());
+  }
+}
+
 outcome::result<void> run_server(common::shared_memory *shm,
                                  std::stop_token st) {
   using namespace boost::interprocess;
@@ -109,7 +119,19 @@ outcome::result<void> run_server(common::shared_memory *shm,
   message_handler mh{};
   mh.m_ptr = shm;
 
-  std::jthread log_thread(log_file_writer_thread);
+  std::array<std::jthread, 2> server_threads = {
+    std::jthread(log_file_writer_thread),
+    
+    std::jthread([shm](std::stop_token st) {
+      return image_buf_reader_thread(st, &shm->m_img_buf);
+    })
+  };
+
+  const auto fn_request_thread_stop = [&]() {
+    for (auto& t : server_threads) {
+      t.request_stop();
+    }
+  };
 
   while (true) {
     try {
@@ -123,13 +145,13 @@ outcome::result<void> run_server(common::shared_memory *shm,
     } catch (std::exception &ex) {
       BOOST_LOG_TRIVIAL(error) << "Exception in server: " << ex.what();
 
-      log_thread.request_stop();
+      fn_request_thread_stop();
 
       return outcome::failure(std::error_code());
     }
   }
 
-  log_thread.request_stop();
+  fn_request_thread_stop();
   
   BOOST_LOG_TRIVIAL(info) << "Exiting server successfully";
   return outcome::success();

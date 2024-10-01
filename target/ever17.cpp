@@ -7,6 +7,7 @@
 #include <fstream>
 #include <gdiplus/gdiplusenums.h>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #include <boost/interprocess/mapped_region.hpp>
@@ -16,6 +17,44 @@
 using namespace targets::kid;
 
 static std::shared_ptr<ever17> g_ever17 = nullptr;
+
+HRESULT GetEncoderClsid(const std::wstring &format, GUID *pGuid) {
+  HRESULT hr = S_OK;
+  UINT nEncoders = 0; // number of image encoders
+  UINT nSize = 0;     // size of the image encoder array in bytes
+  std::vector<BYTE> spData;
+  Gdiplus::ImageCodecInfo *pImageCodecInfo = NULL;
+  Gdiplus::Status status;
+  bool found = false;
+  if (format.empty() || !pGuid) {
+    hr = E_INVALIDARG;
+  }
+  if (SUCCEEDED(hr)) {
+    *pGuid = GUID_NULL;
+    status = Gdiplus::GetImageEncodersSize(&nEncoders, &nSize);
+    if ((status != Gdiplus::Ok) || (nSize == 0)) {
+      hr = E_FAIL;
+    }
+  }
+  if (SUCCEEDED(hr)) {
+    spData.resize(nSize);
+    pImageCodecInfo = (Gdiplus::ImageCodecInfo *)&spData.front();
+    status = Gdiplus::GetImageEncoders(nEncoders, nSize, pImageCodecInfo);
+    if (status != Gdiplus::Ok) {
+      hr = E_FAIL;
+    }
+  }
+  if (SUCCEEDED(hr)) {
+    for (UINT j = 0; j < nEncoders && !found; j++) {
+      if (pImageCodecInfo[j].MimeType == format) {
+        *pGuid = pImageCodecInfo[j].Clsid;
+        found = true;
+      }
+    }
+    hr = found ? S_OK : E_FAIL;
+  }
+  return hr;
+}
 
 common::shared_memory *targets::kid::ever17::get_shm_ptr() {
   void *p = m_region.get_address();
@@ -64,8 +103,6 @@ ever17::textoutw_hook::return_t WINAPI ever17::textoutw_hook::fake_call(
   send_message(shm_ptr, common::target_generic_message_t{.m_text{lpString},
                                                          .m_cp{codepage}});
 
-  g_ever17->registered_text_dcs.emplace(hdc, std::string(lpString, c));
-
   return g_ever17->m_textoutw_hook.m_old_ptr(hdc, x, y, lpString, c);
 }
 
@@ -79,53 +116,50 @@ ever17::bitblt_hook::fake_call(HDC hdc, int x, int y, int cx, int cy,
 
   std::string dc_text;
 
+  RECT rect;
+  ::GetClientRect(g_ever17->m_main_wnd, &rect);
+
+  DWORD width = rect.right - rect.left;
+  DWORD height = rect.bottom - rect.top;
+
   /*
-    Send hook call only if DC is known to be a text DC
-   */
-  if (g_ever17->registered_text_dcs.contains(hdc)) {
-    g_ever17->registered_text_dcs.visit(hdc, [&](auto& s) {
-      dc_text = s.second;
-    });
-    
-    RECT rect;
-    ::GetClientRect(g_ever17->m_main_wnd, &rect);
+    >You are responsible for deleting the GDI bitmap and the GDI
+    palette. However, you should not delete the GDI bitmap or the GDI
+    palette until after the GDI+ Bitmap::Bitmap object is deleted or
+    goes out of scope.
+  */
+  HBITMAP hbm = ::CreateCompatibleBitmap(hdc, width, height);
 
-    DWORD width = rect.right - rect.left;
-    DWORD height = rect.bottom - rect.top;
+  Gdiplus::Bitmap *bmp = new Gdiplus::Bitmap(hbm, 0);
+  Gdiplus::Graphics bmpGraphics(bmp);
 
-    /*
-      >You are responsible for deleting the GDI bitmap and the GDI
-      palette. However, you should not delete the GDI bitmap or the GDI
-      palette until after the GDI+ Bitmap::Bitmap object is deleted or
-      goes out of scope.
-    */
-    HBITMAP hbm = ::CreateCompatibleBitmap(hdc, width, height);
+  HDC hBmpDC = bmpGraphics.GetHDC();
+  DWORD lines = g_ever17->m_bitblt_hook.m_old_ptr(hBmpDC, 0, 0, width, height,
+                                                  hdc, 0, 0, SRCCOPY);
 
-    Gdiplus::Bitmap *bmp = new Gdiplus::Bitmap(hbm, 0);
-    Gdiplus::Graphics bmpGraphics(bmp);
+  CLSID clsid;
+  GetEncoderClsid(L"image/bmp", &clsid);
 
-    HDC hBmpDC = bmpGraphics.GetHDC();
-    DWORD lines = g_ever17->m_bitblt_hook.m_old_ptr(hBmpDC, 0, 0, width, height,
-                                                    hdc, 0, 0, SRCCOPY);
+  IStream *stream = get_img_buf_stream(shm_ptr);
+  if (stream == NULL) {
+    throw std::runtime_error("Failed to create stream");
+  }
+  {
+    using namespace boost::interprocess;
+    shm_ptr->m_img_buf.m_sem.wait();
 
-    CLSID clsid;
-    ::CLSIDFromString(L"{557cf400-1a04-11d3-9a73-0000f81ef32e}", &clsid);
-
-    IStream *stream = get_img_buf_stream(shm_ptr);
-    bmp->Save(stream, &clsid, nullptr);
-
-    ::ReleaseDC(NULL, hBmpDC);
-
-    delete bmp;
-    delete stream;
-    ::DeleteObject(hbm);
+    auto st = bmp->Save(stream, &clsid, nullptr);
+    if (st != Gdiplus::Status::Ok) {
+      throw std::runtime_error("Failed to save bitmap to stream");
+    }
+    shm_ptr->m_img_buf.m_sem.post();
   }
 
-  
-  send_message(shm_ptr, common::bitblt_hook_message_t {
-      .m_args{hdc, x, y, cx, cy, hdcSrc, x1, y1, rop},
-      .m_src_dc_text{dc_text}
-    });
+  ::ReleaseDC(NULL, hBmpDC);
+
+  delete bmp;
+  stream->Release();
+  ::DeleteObject(hbm);
 
   return res;
 }
